@@ -1,0 +1,201 @@
+<!DOCTYPE html><html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0,
+                   maximum-scale=1.0, user-scalable=no"><title>학습 도우미</title>
+
+<style>
+    * {
+        box-sizing: border-box;
+    }
+
+    body {
+        margin: 0;
+        font-family:
+            -apple-system,
+            BlinkMacSystemFont,
+            "Noto Sans KR",
+            "Malgun Gothic",
+            sans-serif;
+        background: #f5f7fb;
+        color: #222;
+    }
+
+    .header {
+        padding: 28px 20px 20px;
+        text-align: center;
+        background: white;
+        border-bottom: 1px solid #e5e7eb;
+    }
+
+    .header h1 {
+        margin: 0;
+        font-size: 26px;
+    }
+
+    .header p {
+        margin: 8px 0 0;
+        color: #777;
+        font-size: 14px;
+    }
+
+    .menu {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 16px;
+        padding: 24px 18px;
+        max-width: 600px;
+        margin: 0 auto;
+    }
+
+    .menu a {
+        text-decoration: none;
+        color: inherit;
+    }
+
+    .card {
+        background: white;
+        border-radius: 20px;
+        min-height: 170px;
+
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+
+        box-shadow:
+            0 4px 14px rgba(0, 0, 0, 0.08);
+
+        transition: transform 0.15s,
+                    box-shadow 0.15s;
+
+        border: 1px solid #eeeeee;
+    }
+
+    .card:active {
+        transform: scale(0.96);
+        box-shadow:
+            0 2px 7px rgba(0, 0, 0, 0.10);
+    }
+
+    .icon {
+        width: 72px;
+        height: 72px;
+        border-radius: 22px;
+
+        display: flex;
+        align-items: center;
+        justify-content: center;
+
+        font-size: 40px;
+        margin-bottom: 14px;
+    }
+
+    .sentence .icon {
+        background: #e8f0ff;
+    }
+
+    .word .icon {
+        background: #e8f8ee;
+    }
+
+    .quiz .icon {
+        background: #fff3df;
+    }
+
+    .hanja .icon {
+        background: #f5eaff;
+    }
+
+    .title {
+        font-size: 18px;
+        font-weight: 700;
+    }
+
+    .description {
+        margin-top: 5px;
+        font-size: 12px;
+        color: #888;
+    }
+
+    .footer {
+        text-align: center;
+        color: #aaa;
+        font-size: 12px;
+        padding: 20px;
+    }
+
+    @media (max-width: 380px) {
+        .menu {
+            gap: 12px;
+            padding: 18px 12px;
+        }
+
+        .card {
+            min-height: 150px;
+        }
+
+        .icon {
+            width: 62px;
+            height: 62px;
+            font-size: 34px;
+        }
+
+        .title {
+            font-size: 16px;
+        }
+    }
+</style>
+
+</head><body><div class="header">
+    <h1>📚 학습 도우미</h1>
+    <p>원하는 학습을 선택하세요</p>
+</div>
+
+<div class="menu">
+
+    <!-- 문장 학습 -->
+    <a href="https://gumury11-hash.github.io/study/">
+        <div class="card sentence">
+            <div class="icon">💬</div>
+            <div class="title">문장학습</div>
+            <div class="description">생활 영어 문장 학습</div>
+        </div>
+    </a>
+
+    <!-- 단어 학습 -->
+    <a href="https://gumury11-hash.github.io/word/">
+        <div class="card word">
+            <div class="icon">📖</div>
+            <div class="title">단어학습</div>
+            <div class="description">영어 단어 학습</div>
+        </div>
+    </a>
+
+    <!-- 단어 퀴즈 -->
+    <a href="https://gumury11-hash.github.io/word-quiz">
+        <div class="card quiz">
+            <div class="icon">📝</div>
+            <div class="title">단어 퀴즈</div>
+            <div class="description">단어 실력 테스트</div>
+        </div>
+    </a>
+
+    <!-- 한자 학습 -->
+    <a href="https://gumury11-hash.github.io/china/">
+        <div class="card hanja">
+            <div class="icon">漢</div>
+            <div class="title">한자학습</div>
+            <div class="description">한자 학습하기</div>
+        </div>
+    </a>
+
+</div>
+
+<div class="footer">
+    © 2026 학습 도우미
+</div>
+
+</body>
+</html>
