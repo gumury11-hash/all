@@ -40,6 +40,105 @@
         font-size: 14px;
     }
 
+    .api-key-section {
+        max-width: 564px;
+        margin: 20px auto 0;
+        padding: 16px;
+        background: #fff9db;
+        border: 1px solid #fde68a;
+        border-radius: 16px;
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.05);
+    }
+
+    .api-key-section label {
+        display: block;
+        font-size: 14px;
+        font-weight: 700;
+        margin-bottom: 10px;
+    }
+
+    .api-key-heading {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+    }
+
+    .help-trigger-btn {
+        flex: none;
+        padding: 7px 10px;
+        border: 0;
+        border-radius: 999px;
+        background: linear-gradient(135deg, #50b6ff 0%, #2b8fe9 100%);
+        color: white;
+        font-size: 12px;
+        font-weight: 700;
+        cursor: pointer;
+    }
+
+    .api-key-row {
+        display: flex;
+        gap: 8px;
+    }
+
+    .api-key-row input {
+        flex: 1;
+        min-width: 0;
+        padding: 11px 12px;
+        border: 1px solid #d1d5db;
+        border-radius: 9px;
+        font-size: 14px;
+    }
+
+    .api-key-row button {
+        padding: 11px 14px;
+        border: 0;
+        border-radius: 9px;
+        background: #2563eb;
+        color: white;
+        font-weight: 700;
+        cursor: pointer;
+    }
+
+    .api-status {
+        margin: 10px 0 0;
+        color: #92400e;
+        font-size: 12px;
+    }
+
+    .modal-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        z-index: 1000;
+        align-items: center;
+        justify-content: center;
+        padding: 16px;
+        background: rgba(20, 25, 40, 0.45);
+    }
+
+    .modal-content {
+        position: relative;
+        width: 100%;
+        max-width: 500px;
+        padding: 20px 18px 18px;
+        border-radius: 18px;
+        background: white;
+        box-shadow: 0 18px 45px rgba(0, 0, 0, 0.2);
+    }
+
+    .modal-close {
+        position: absolute;
+        top: 10px;
+        right: 12px;
+        padding: 4px 8px;
+        border: 0;
+        background: transparent;
+        color: #64748b;
+        font-size: 22px;
+        cursor: pointer;
+    }
+
     .menu {
         display: grid;
         grid-template-columns: repeat(2, 1fr);
@@ -153,10 +252,34 @@
     <p>원하는 학습을 선택하세요</p>
 </div>
 
+<div id="apiKeySection" class="api-key-section" style="display:none;">
+    <div class="api-key-heading">
+        <label for="apiKeyInput">Google Gemini API 키 입력</label>
+        <button class="help-trigger-btn" type="button" onclick="openHelpModal()">도움말</button>
+    </div>
+    <div class="api-key-row">
+        <input type="password" id="apiKeyInput" placeholder="AIzaSy... 키 입력" autocomplete="off">
+        <button type="button" onclick="saveApiKey()">키 등록</button>
+    </div>
+    <p class="api-status">API 키가 등록되지 않았습니다. 등록하면 모든 학습 메뉴에서 함께 사용됩니다.</p>
+</div>
+
+<div id="helpModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="helpModalTitle">
+    <div class="modal-content">
+        <button class="modal-close" type="button" onclick="closeHelpModal()" aria-label="도움말 닫기">×</button>
+        <h2 id="helpModalTitle" style="margin: 0; color: #0284c7; font-size: 18px;">💡 Gemini API 키 발급 방법</h2>
+        <ol style="padding-left: 20px; font-size: 14px; line-height: 1.65;">
+            <li><a href="https://aistudio.google.com/api-keys" target="_blank" rel="noopener">Google AI Studio</a>에 접속해 Google 계정으로 로그인합니다.</li>
+            <li><strong>API 키 만들기</strong>를 선택해 키를 생성합니다.</li>
+            <li>생성된 키를 복사해 위 입력창에 붙여넣고 <strong>키 등록</strong>을 누릅니다.</li>
+        </ol>
+    </div>
+</div>
+
 <div class="menu">
 
     <!-- 문장 학습 -->
-    <a href="https://gumury11-hash.github.io/study/">
+    <a href="./study.html">
         <div class="card sentence">
             <div class="icon">💬</div>
             <div class="title">문장학습</div>
@@ -165,7 +288,7 @@
     </a>
 
     <!-- 단어 학습 -->
-    <a href="https://gumury11-hash.github.io/word/">
+    <a href="./word.html">
         <div class="card word">
             <div class="icon">📖</div>
             <div class="title">단어학습</div>
@@ -174,7 +297,7 @@
     </a>
 
     <!-- 단어 퀴즈 -->
-    <a href="https://gumury11-hash.github.io/word-quiz">
+    <a href="./word-quiz.html">
         <div class="card quiz">
             <div class="icon">📝</div>
             <div class="title">단어 퀴즈</div>
@@ -183,7 +306,7 @@
     </a>
 
     <!-- 한자 학습 -->
-    <a href="https://gumury11-hash.github.io/china/">
+    <a href="./china.html">
         <div class="card hanja">
             <div class="icon">漢</div>
             <div class="title">한자학습</div>
@@ -192,10 +315,40 @@
     </a>
 
 </div>
+<script>
+    const SHARED_API_KEY_STORAGE = 'gemini_api_key';
 
-<div class="footer">
-    © 2026 학습 도우미
-</div>
+    window.addEventListener('DOMContentLoaded', function () {
+        const savedKey = localStorage.getItem(SHARED_API_KEY_STORAGE);
+        document.getElementById('apiKeySection').style.display = savedKey ? 'none' : 'block';
+    });
 
+    function saveApiKey() {
+        const input = document.getElementById('apiKeyInput');
+        const apiKey = input.value.trim();
+
+        if (!apiKey) {
+            alert('API 키를 입력해주세요.');
+            input.focus();
+            return;
+        }
+
+        localStorage.setItem(SHARED_API_KEY_STORAGE, apiKey);
+        document.getElementById('apiKeySection').style.display = 'none';
+        alert('API 키가 등록되었습니다. 모든 학습 메뉴에서 사용할 수 있습니다.');
+    }
+
+    function openHelpModal() {
+        document.getElementById('helpModal').style.display = 'flex';
+    }
+
+    function closeHelpModal() {
+        document.getElementById('helpModal').style.display = 'none';
+    }
+
+    document.getElementById('helpModal').addEventListener('click', function (event) {
+        if (event.target === this) closeHelpModal();
+    });
+</script>
 </body>
 </html>
