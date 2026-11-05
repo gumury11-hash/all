@@ -235,6 +235,23 @@
     .hwatoo .icon {
         background: #fff3e0;
     }
+   .pair-icon {
+        gap: 0;
+    }
+
+    .pair-icon span {
+        display: inline-block;
+        margin: 0 -5px;
+        font-size: 34px;
+    }
+
+    .pair-icon span:first-child {
+        transform: translateY(3px) rotate(-14deg);
+    }
+
+    .pair-icon span:last-child {
+        transform: translateY(-3px) rotate(14deg);
+    }
     
     .title {
         font-size: 18px;
@@ -375,12 +392,21 @@
         </div>
     </a>    
 
-    <!-- 화투 짝맞추기 게임 -->
+    <!-- 화투 맞추기 게임 -->
     <a href="https://gumury11-hash.github.io/match">
         <div class="card hwatoo">
             <div class="icon" aria-hidden="true">🎴</div>
             <div class="title">화투 맞추기</div>
             <div class="description">화투패 기억력 짝 맞추기</div>
+        </div>
+    </a>
+
+    <!-- 화투 짝맞추기 게임 -->
+    <a href="./memory.html">
+        <div class="card hwatoo">
+            <div class="icon pair-icon" aria-hidden="true"><span>🎴</span><span>🎴</span></div>
+            <div class="title">화투 짝맞추기</div>
+            <div class="description">같은 달 화투패 24쌍 맞추기</div>
         </div>
     </a>
     
