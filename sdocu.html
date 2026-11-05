@@ -1,0 +1,932 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>스도쿠</title>
+<style>
+/* 원목 스타일 테마 레이아웃 */
+body {
+    background-color: #2b1d14;
+    background-image: linear-gradient(315deg, #2b1d14 0%, #4a3224 74%);
+    color: #e6c697;
+    font-family: 'Malgun Gothic', '맑은 고딕', sans-serif;
+    margin: 0; padding: 0;
+    display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+    width: 100vw; min-height: 100vh; 
+    overflow-x: hidden; overflow-y: auto;
+}
+
+h2 {
+    color: #f3dcb3; text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.6);
+    margin: 20px 0 10px 0; font-size: 2rem; font-weight: bold; letter-spacing: 3px;
+    text-align: center;
+}
+
+.main-container {
+    display: flex; gap: 2vw; align-items: flex-start; justify-content: center;
+    width: 95vw; max-width: 1600px; z-index: 1; margin-bottom: 30px;
+}
+
+.game-area { 
+    display: flex; flex-direction: column; align-items: center; 
+    flex: 1.3; box-sizing: border-box;
+}
+
+.board-wrapper {
+    background: #3a251a; padding: 10px; border-radius: 12px;
+    box-shadow: inset 0 0 30px rgba(0,0,0,0.9), 0 15px 35px rgba(0,0,0,0.6);
+    border: 6px solid #1f130b; width: 100%;
+    display: flex; align-items: center; justify-content: center; box-sizing: border-box;
+}
+
+table { 
+    border-collapse: collapse; 
+    background-color: #d7bc95; 
+    width: 100%;
+    max-width: 500px; 
+    aspect-ratio: 1 / 1; 
+    box-shadow: 0 0 15px rgba(0,0,0,0.5);
+    border: 4px solid #331f11; 
+}
+td { 
+    border: 1px solid #5a3d28; 
+    width: 11.11%; height: 11.11%; 
+    padding: 0; position: relative; 
+    box-sizing: border-box;
+}
+
+tr:nth-child(3n) td { border-bottom: 4px solid #331f11; }
+td:nth-child(3n) { border-right: 4px solid #331f11; }
+tr:last-child td { border-bottom: none; }
+td:last-child { border-right: none; }
+
+input {
+    width: 100%; height: 100%; border: none; background: transparent;
+    text-align: center; 
+    font-size: 2rem; 
+    font-weight: bold; color: blue; outline: none; padding: 0; box-sizing: border-box;
+    cursor: pointer;
+    user-select: none;
+}
+
+.number-pad {
+    display: grid; 
+    grid-template-columns: repeat(9, 1fr) 2fr; 
+    gap: 4px; 
+    width: 100%; 
+    max-width: 520px; 
+    margin: 12px 0; 
+    box-sizing: border-box;
+}
+.num-btn {
+    background: linear-gradient(145deg, #bd9662, #8c6a3e); color: #2b1d14;
+    border: 1px solid #6e4e37; border-radius: 6px; font-size: 1.4rem; font-weight: bold;
+    width: 100%;
+    height: 48px; 
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.3); transition: all 0.15s ease;
+    user-select: none;
+    box-sizing: border-box;
+}
+.num-btn.clear-btn {
+    font-size: 0.9rem;
+    background: linear-gradient(145deg, #a25252, #7a3535);
+    color: #f3dcb3;
+    border-color: #5c2222;
+}
+.num-btn:active {
+    transform: scale(0.95); box-shadow: 0 2px 3px rgba(0,0,0,0.5);
+}
+
+.control-panel { 
+    width: 100%; max-width: 520px; display: grid; grid-template-columns: 1.2fr repeat(3, 1fr); gap: 6px; 
+    box-sizing: border-box;
+}
+select, .ctrl-btn {
+    background: linear-gradient(145deg, #573c2a, #3f291c); color: #f3dcb3;
+    border: 1px solid #6e4e37; border-radius: 6px; height: 42px;
+    font-size: 0.9rem; font-weight: bold; cursor: pointer; transition: all 0.2s ease;
+    display: flex; align-items: center; justify-content: center; box-sizing: border-box;
+    white-space: nowrap; text-align: center;
+}
+select { outline: none; appearance: none; padding: 0 8px; width: 100%; text-align-last: center; }
+select:hover, .ctrl-btn:hover { background: linear-gradient(145deg, #674833, #4a3223); border-color: #855f44; }
+
+.info-panel {
+    flex: 0.7; background-color: #23160e; border: 12px solid #3d2719; 
+    border-image: linear-gradient(to bottom, #4a3224, #2b1d14) 12;
+    border-radius: 6px; padding: 15px; box-sizing: border-box; display: flex; flex-direction: column;
+    min-width: 220px; min-height: 400px;
+}
+.info-title { font-size: 1.2rem; font-weight: bold; color: #bd9662; border-bottom: 2px solid #422d1e; padding-bottom: 8px; margin-bottom: 12px; text-align: center; letter-spacing: 3px; }
+#logBox { flex: 1; font-size: 0.95rem; line-height: 1.6; color: #cfbba3; overflow-y: auto; white-space: pre-line; padding-right: 5px; margin-bottom: 15px; }
+
+.record-section {
+    border-top: 2px solid #422d1e;
+    padding-top: 10px;
+}
+.record-title { font-size: 1rem; font-weight: bold; color: #bd9662; margin-bottom: 8px; text-align: center; }
+#recordList { font-size: 0.85rem; color: #e6c697; max-height: 120px; overflow-y: auto; }
+.record-item { display: flex; justify-content: space-between; padding: 3px 0; border-bottom: 1px solid #3d2719; }
+
+#logBox::-webkit-scrollbar { width: 6px; }
+#logBox::-webkit-scrollbar-thumb { background: #4a3224; border-radius: 3px; }
+
+.wrong-input { color: #ff3b3b !important; text-shadow: 0 0 5px rgba(255, 0, 0, 0.2); }
+.selected-cell { background-color: rgba(243, 220, 179, 0.35); }
+
+#fwCanvas { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 10; }
+#congratsOverlay, #confirmOverlay {
+    position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+    background: rgba(0,0,0,0.75); display: none; align-items: center; justify-content: center; z-index: 20;
+}
+.congrats-card, .confirm-card {
+    background: #3a251a; border: 8px solid #bd9662; padding: 30px; border-radius: 20px;
+    text-align: center; color: #f3dcb3; box-shadow: 0 0 50px rgba(0,0,0,0.9); max-width: 90%;
+}
+.congrats-card h1, .confirm-card h1 { font-size: 2.5rem; margin: 0 0 15px 0; color: #ffcc00; text-shadow: 2px 2px 4px rgba(0,0,0,0.5); }
+.confirm-card h1 { font-size: 1.8rem; color: #bd9662; }
+
+@media (max-width: 768px) {
+    .main-container { flex-direction: column; align-items: center; height: auto; gap: 20px; }
+    .game-area { width: 100%; }
+    .board-wrapper { padding: 6px; }
+    table { max-width: 100%; }
+    input { font-size: 1.6rem; }
+    .number-pad { max-width: 100%; gap: 4px; }
+    .num-btn { font-size: 1.2rem; height: 44px; }
+    .num-btn.clear-btn { font-size: 0.8rem; }
+    .control-panel { max-width: 100%; gap: 5px; }
+    select, .ctrl-btn { font-size: 0.8rem; height: 40px; }
+    .info-panel { width: 100%; min-height: 180px; height: 180px; }
+}
+</style>
+</head>
+<body>
+
+<canvas id="fwCanvas"></canvas>
+<h2>스도쿠</h2>
+
+<div class="main-container">
+    <div class="game-area">
+        <div class="board-wrapper">
+            <table id="board"></table>
+        </div>
+        
+        <div class="number-pad">
+            <button class="num-btn" onclick="pressNumber(1)">1</button>
+            <button class="num-btn" onclick="pressNumber(2)">2</button>
+            <button class="num-btn" onclick="pressNumber(3)">3</button>
+            <button class="num-btn" onclick="pressNumber(4)">4</button>
+            <button class="num-btn" onclick="pressNumber(5)">5</button>
+            <button class="num-btn" onclick="pressNumber(6)">6</button>
+            <button class="num-btn" onclick="pressNumber(7)">7</button>
+            <button class="num-btn" onclick="pressNumber(8)">8</button>
+            <button class="num-btn" onclick="pressNumber(9)">9</button>
+            <button class="num-btn clear-btn" onclick="pressNumber('')">지우기</button>
+        </div>
+
+        <div class="control-panel">
+            <select id="difficulty">
+                <option value="easy">초급 (48개)</option>
+                <option value="medium">중급 (53개)</option>
+                <option value="hard">고급 (57개)</option>
+            </select>
+            <button class="ctrl-btn" onclick="generateSudoku()">문제 생성</button>
+            <button class="ctrl-btn" onclick="showHint()">힌트</button>
+            <button class="ctrl-btn" onclick="logicSolveSudoku()">자동 풀이</button>
+        </div>
+    </div>
+    
+    <div class="info-panel">
+        <div class="info-title">알림 및 로그</div>
+        <div id="logBox">칸을 선택해 숫자를 자유롭게 입력하거나, [문제 생성] 버튼을 누르세요.</div>
+
+        <div class="record-section">
+            <div class="record-title">📊 누적 집계 (성공 기록)</div>
+            <div id="recordList">
+                <div style="text-align:center; color:#8c6a3e; padding-top:10px;">아직 집계된 기록이 없습니다.</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="confirmOverlay">
+    <div class="confirm-card">
+        <h1>❓ 확인</h1>
+        <p style="font-size: 1.2rem; margin-bottom: 25px;">새로운 문제를 생성하시겠습니까?</p>
+        <div style="display: flex; gap: 10px; justify-content: center;">
+            <button class="ctrl-btn" onclick="confirmNewGame()" style="height: 45px; padding: 0 20px;">예</button>
+            <button class="ctrl-btn" onclick="cancelNewGame()" style="height: 45px; padding: 0 20px;">아니오</button>
+        </div>
+    </div>
+</div>
+
+<div id="congratsOverlay">
+    <div class="congrats-card">
+        <h1>🎉 축하합니다!</h1>
+        <p id="congratsMsg" style="font-size: 1.2rem; margin-bottom: 10px;">모든 빈칸을 정확하게 풀어내셨습니다!</p>
+        <p id="gameResultInfo" style="font-size: 1rem; color: #bd9662; margin-bottom: 25px;"></p>
+        <div style="display: flex; gap: 10px; justify-content: center;">
+            <button class="ctrl-btn" onclick="closeCongrats()" style="height: 45px; padding: 0 20px;">새 게임 시작</button>
+            <button class="ctrl-btn" onclick="confirmResult()" style="height: 45px; padding: 0 20px;">확인</button>
+        </div>
+    </div>
+</div>
+
+<script>
+const table = document.getElementById("board");
+let currentSolution = []; 
+let lastFocusedInput = null; 
+let hintCount = 0;
+let errorCount = 0;
+let wasAutoSolved = false;
+let isGameActive = false;
+
+// 페이지 로드 시 기록 불러오기
+window.onload = function() {
+    updateRecordUI();
+};
+
+for(let r=0;r<9;r++){
+    const tr=document.createElement("tr");
+    for(let c=0;c<9;c++){
+        const td=document.createElement("td");
+        const input=document.createElement("input");
+        input.type = "text"; 
+        input.readOnly = true; 
+        input.dataset.editable = "true"; 
+        
+        input.addEventListener("click", function() {
+            if(this.dataset.editable === "true") {
+                clearSelectedEffects();
+                this.classList.add("selected-cell");
+                lastFocusedInput = { element: this, row: r, col: c };
+            }
+        });
+
+        td.appendChild(input);
+        tr.appendChild(td);
+    }
+    table.appendChild(tr);
+}
+
+function clearSelectedEffects() {
+    table.querySelectorAll("input").forEach(inp => inp.classList.remove("selected-cell"));
+}
+
+function pressNumber(num) {
+    if (lastFocusedInput && lastFocusedInput.element) {
+        lastFocusedInput.element.value = num;
+        validateInput(lastFocusedInput.element, lastFocusedInput.row, lastFocusedInput.col);
+    } else {
+        document.getElementById("logBox").innerText = "💡 먼저 입력할 칸을 터치하여\n선택한 후 숫자 버튼을 눌러주세요.";
+    }
+}
+
+function validateInput(input, r, c) {
+    const val = input.value;
+    if (!val) { 
+        input.classList.remove("wrong-input"); 
+        document.getElementById("logBox").innerText = `🧹 (${r+1}, ${c+1}) 칸의 숫자를 지웠습니다.`;
+        return; 
+    }
+
+    if (currentSolution.length > 0) {
+        if (parseInt(val) !== currentSolution[r][c]) {
+            input.classList.add("wrong-input");
+            errorCount++;
+            document.getElementById("logBox").innerText = `❌ 틀린 값입니다! (누적 오류: ${errorCount}회)\n(${r+1}, ${c+1}) 칸을 다시 확인해 보세요.`;
+        } else {
+            input.classList.remove("wrong-input");
+            document.getElementById("logBox").innerText = `✅ 정답입니다!\n(${r+1}, ${c+1}) 칸에 올바른 숫자를 입력하셨습니다.`;
+            checkGameFinished();
+        }
+    } else {
+        input.style.color = "blue"; 
+        document.getElementById("logBox").innerText = `✍️ (${r+1}, ${c+1}) 칸에 ${val}을(를) 입력했습니다.`;
+    }
+}
+
+function checkGameFinished() {
+    if (currentSolution.length === 0) return; 
+    const inputs = table.querySelectorAll("input");
+    let allCorrect = true;
+    inputs.forEach((input, index) => {
+        const r = Math.floor(index / 9);
+        const c = index % 9;
+        if (parseInt(input.value) !== currentSolution[r][c]) allCorrect = false;
+    });
+
+    if (allCorrect) {
+        clearSelectedEffects();
+        isGameActive = false;
+
+        if (!wasAutoSolved) {
+            startFireworks();
+            const resultInfo = document.getElementById("gameResultInfo");
+            const congratsMsg = document.getElementById("congratsMsg");
+
+            congratsMsg.innerText = "🎉 축하합니다!";
+            resultInfo.innerText = `힌트 사용 ${hintCount}회 오류 ${errorCount}회로 풀이하셨습니다.`;
+
+            saveRecord(hintCount, errorCount);
+            document.getElementById("congratsOverlay").style.display = "flex";
+        } else {
+            document.getElementById("logBox").innerText = "🤖 자동 풀이가 완료되었습니다.";
+        }
+    }
+}
+
+function saveRecord(hints, errors) {
+    let stats = JSON.parse(localStorage.getItem("sudokuStats") || "{}");
+    let key = `H:${hints},E:${errors}`;
+    stats[key] = (stats[key] || 0) + 1;
+    localStorage.removeItem("sudokuRecords"); // 기존 최근 기록 5회 데이터 완전 삭제
+    localStorage.setItem("sudokuStats", JSON.stringify(stats));
+    updateRecordUI();
+}
+
+function updateRecordUI() {
+    const recordList = document.getElementById("recordList");
+    let stats = JSON.parse(localStorage.getItem("sudokuStats") || "{}");
+
+    let entries = Object.entries(stats);
+    if (entries.length === 0) {
+        recordList.innerHTML = '<div style="text-align:center; color:#8c6a3e; padding-top:10px;">아직 집계된 기록이 없습니다.</div>';
+        return;
+    }
+
+    // 키 정렬 (힌트순, 오류순)
+    entries.sort((a, b) => {
+        let [ha, ea] = a[0].split(',').map(s => parseInt(s.split(':')[1]));
+        let [hb, eb] = b[0].split(',').map(s => parseInt(s.split(':')[1]));
+        if (ha !== hb) return ha - hb;
+        return ea - eb;
+    });
+
+    let html = "";
+    entries.forEach(([key, count]) => {
+        let [h, e] = key.split(',').map(s => s.split(':')[1]);
+        html += `<div class="record-item">
+            <span>힌트 ${h} 오류 ${e}</span>
+            <span style="font-weight:bold; color:#bd9662;">${count} 게임</span>
+        </div>`;
+    });
+    recordList.innerHTML = html;
+}
+
+function closeCongrats() {
+    document.getElementById("congratsOverlay").style.display = "none";
+    stopFireworks();
+    generateSudoku();
+}
+
+function confirmResult() {
+    document.getElementById("congratsOverlay").style.display = "none";
+    stopFireworks();
+}
+
+function clearBackgrounds(){
+    const rows = table.rows;
+    for(let r=0; r<9; r++){
+        for(let c=0; c<9; c++){
+            rows[r].cells[c].firstChild.style.backgroundColor = "";
+        }
+    }
+}
+
+function getBoard(){
+    let board=[];
+    const rows=table.rows;
+    for(let r=0;r<9;r++){
+        board[r]=[];
+        for(let c=0;c<9;c++){
+            let v=rows[r].cells[c].firstChild.value;
+            board[r][c]=v?parseInt(v):0;
+        }
+    }
+    return board;
+}
+
+function setBoard(board){
+    const rows=table.rows;
+    for(let r=0;r<9;r++){
+        for(let c=0;c<9;c++){
+            const input = rows[r].cells[c].firstChild;
+            if(input.value==="" || input.classList.contains("wrong-input")){ 
+                input.value=board[r][c];
+                input.style.color="black";
+                input.classList.remove("wrong-input");
+            }
+        }
+    }
+}
+
+function candidates(board,row,col){
+    if(board[row][col]!==0) return [];
+    let possible=[1,2,3,4,5,6,7,8,9];
+    for(let x=0;x<9;x++) possible=possible.filter(n=>n!==board[row][x]);
+    for(let x=0;x<9;x++) possible=possible.filter(n=>n!==board[x][col]);
+    let sr=row-row%3, sc=col-col%3;
+    for(let r=0;r<3;r++){
+        for(let c=0;c<3;c++){
+            possible=possible.filter(n=>n!==board[sr+r][sc+c]);
+        }
+    }
+    return possible;
+}
+
+// 💡 특정 행(Row)에서 타겟 셀 외의 다른 빈칸들에 num이 못 들어오게 차단하는 원인 셀들을 수집하는 함수
+function getRowBlockingPositions(board, targetR, targetC, num) {
+    let positions = [];
+    let seen = new Set();
+
+    for(let c=0; c<9; c++) {
+        if(c === targetC || board[targetR][c] !== 0) continue;
+
+        // 다른 빈칸 (targetR, c)에 num이 들어올 수 없는 원인을 찾음 (다른 행의 세로열, 혹은 박스)
+        for(let r=0; r<9; r++) {
+            if(r === targetR) continue;
+            if(board[r][c] === num) {
+                let key = `${r+1},${c+1}`;
+                if(!seen.has(key)) {
+                    seen.add(key);
+                    positions.push(`${r+1},${c+1}`);
+                }
+            }
+        }
+
+        // 박스 차단 원인 확인
+        let sr = Math.floor(targetR/3)*3;
+        let sc = Math.floor(c/3)*3;
+        for(let br=sr; br<sr+3; br++) {
+            for(let bc=sc; bc<sc+3; bc++) {
+                if(br === targetR) continue;
+                if(board[br][bc] === num) {
+                    let key = `${br+1},${bc+1}`;
+                    if(!seen.has(key)) {
+                        seen.add(key);
+                        positions.push(`${br+1},${bc+1}`);
+                    }
+                }
+            }
+        }
+    }
+    return positions;
+}
+
+// 💡 특정 열(Col) 차단 원인 셀 수집 함수
+function getColBlockingPositions(board, targetR, targetC, num) {
+    let positions = [];
+    let seen = new Set();
+
+    for(let r=0; r<9; r++) {
+        if(r === targetR || board[r][targetC] !== 0) continue;
+
+        for(let c=0; c<9; c++) {
+            if(c === targetC) continue;
+            if(board[r][c] === num) {
+                let key = `${r+1},${c+1}`;
+                if(!seen.has(key)) {
+                    seen.add(key);
+                    positions.push(`${r+1},${c+1}`);
+                }
+            }
+        }
+    }
+    return positions;
+}
+
+// 💡 특정 박스(Box) 차단 원인 셀 수집 함수
+function getBoxBlockingPositions(board, targetR, targetC, num) {
+    let positions = [];
+    let seen = new Set();
+
+    let sr = Math.floor(targetR/3)*3;
+    let sc = Math.floor(targetC/3)*3;
+
+    for(let r=sr; r<sr+3; r++) {
+        for(let c=sc; c<sc+3; c++) {
+            if((r === targetR && c === targetC) || board[r][c] !== 0) continue;
+
+            for(let x=0; x<9; x++) {
+                if(x < sr || x >= sr+3) {
+                    if(board[x][c] === num) {
+                        let key = `${x+1},${c+1}`;
+                        if(!seen.has(key)) { seen.add(key); positions.push(`${x+1},${c+1}`); }
+                    }
+                }
+                if(x < sc || x >= sc+3) {
+                    if(board[r][x] === num) {
+                        let key = `${r+1},${x+1}`;
+                        if(!seen.has(key)) { seen.add(key); positions.push(`${r+1},${x+1}`); }
+                    }
+                }
+            }
+        }
+    }
+    return positions;
+}
+
+function showHint(){
+    clearBackgrounds();
+    let board=getBoard();
+
+    // 1. 유일 후보 규칙
+    for(let r=0;r<9;r++){
+        for(let c=0;c<9;c++){
+            if(board[r][c]===0){
+                let cand=candidates(board,r,c);
+                if(cand.length===1){
+                    hintCount++;
+                    document.getElementById("logBox").innerText = `💡 힌트 (${r+1}, ${c+1}) 칸:\n1.가로세로 숫자 중 빠진 유일 값입니다.`;
+                    const input = table.rows[r].cells[c].firstChild;
+                    input.style.backgroundColor = "#dcfce7"; // 옅은 연두색으로 변경
+                    if(input.dataset.editable === "true") {
+                        clearSelectedEffects();
+                        input.classList.add("selected-cell");
+                        lastFocusedInput = { element: input, row: r, col: c };
+                    }
+                    return;
+                }
+            }
+        }
+    }
+
+    // 2. 유일 위치 규칙
+    for(let num=1;num<=9;num++){
+        // 행 검사
+        for(let r=0;r<9;r++){
+            let places=[];
+            for(let c=0;c<9;c++){
+                if(board[r][c]===0 && candidates(board,r,c).includes(num)) {
+                    places.push(c);
+                }
+            }
+            if(places.length===1){
+                hintCount++;
+                let targetCol = places[0];
+                let blocking = getRowBlockingPositions(board, r, targetCol, num);
+                let impactStr = blocking.length > 0 ? blocking.join(" ") : `행 ${r+1}`;
+                
+                document.getElementById("logBox").innerText = `💡 힌트 (${r+1}, ${targetCol+1}) 칸:\n2. ${impactStr} 의 영향으로 특정됨`;
+                const input = table.rows[r].cells[targetCol].firstChild;
+                input.style.backgroundColor = "#dcfce7"; // 옅은 연두색으로 변경
+                if(input.dataset.editable === "true") {
+                    clearSelectedEffects();
+                    input.classList.add("selected-cell");
+                    lastFocusedInput = { element: input, row: r, col: targetCol };
+                }
+                return;
+            }
+        }
+        // 열 검사
+        for(let c=0;c<9;c++){
+            let places=[];
+            for(let r=0;r<9;r++){
+                if(board[r][c]===0 && candidates(board,r,c).includes(num)) {
+                    places.push(r);
+                }
+            }
+            if(places.length===1){
+                hintCount++;
+                let targetRow = places[0];
+                let blocking = getColBlockingPositions(board, targetRow, c, num);
+                let impactStr = blocking.length > 0 ? blocking.join(" ") : `열 ${c+1}`;
+                
+                document.getElementById("logBox").innerText = `💡 힌트 (${targetRow+1}, ${c+1}) 칸:\n2. ${impactStr} 의 영향으로 특정됨`;
+                const input = table.rows[targetRow].cells[c].firstChild;
+                input.style.backgroundColor = "#dcfce7"; // 옅은 연두색으로 변경
+                if(input.dataset.editable === "true") {
+                    clearSelectedEffects();
+                    input.classList.add("selected-cell");
+                    lastFocusedInput = { element: input, row: targetRow, col: c };
+                }
+                return;
+            }
+        }
+        // 3x3 박스 검사
+        for(let br=0;br<3;br++){
+            for(let bc=0;bc<3;bc++){
+                let places=[];
+                for(let r=0;r<3;r++){
+                    for(let c=0;c<3;c++){
+                        let rr=br*3+r, cc=bc*3+c;
+                        if(board[rr][cc]===0 && candidates(board,rr,cc).includes(num)) {
+                            places.push([rr,cc]);
+                        }
+                    }
+                }
+                if(places.length===1){
+                    hintCount++;
+                    let [rr,cc]=places[0];
+                    let blocking = getBoxBlockingPositions(board, rr, cc, num);
+                    let impactStr = blocking.length > 0 ? blocking.join(" ") : `박스 (${br+1},${bc+1})`;
+                    
+                    document.getElementById("logBox").innerText = `💡 힌트 (${rr+1}, ${cc+1}) 칸:\n2. ${impactStr} 의 영향으로 특정됨`;
+                    const input = table.rows[rr].cells[cc].firstChild;
+                    input.style.backgroundColor = "#dcfce7"; // 옅은 연두색으로 변경
+                    if(input.dataset.editable === "true") {
+                        clearSelectedEffects();
+                        input.classList.add("selected-cell");
+                        lastFocusedInput = { element: input, row: rr, col: cc };
+                    }
+                    return;
+                }
+            }
+        }
+    }
+    document.getElementById("logBox").innerText = "힌트: 적용 가능한 규칙이 없습니다.";
+}
+
+function logicSolveSudoku(){
+    wasAutoSolved = true;
+    clearBackgrounds();
+    clearSelectedEffects();
+    let board=getBoard();
+    let log=[];
+    let progress=true;
+
+    while(progress){
+        progress=false;
+        for(let r=0;r<9;r++){
+            for(let c=0;c<9;c++){
+                if(board[r][c]===0){
+                    let cand=candidates(board,r,c);
+                    if(cand.length===1){
+                        board[r][c]=cand[0];
+                        log.push(`(${r+1},${c+1}) 칸은 후보가 ${cand[0]} 하나뿐 → ${cand[0]} 확정`);
+                        progress=true;
+                    }
+                }
+            }
+        }
+        for(let num=1;num<=9;num++){
+            for(let r=0;r<9;r++){
+                let places=[];
+                for(let c=0;c<9;c++){
+                    if(board[r][c]===0 && candidates(board,r,c).includes(num)) places.push(c);
+                }
+                if(places.length===1){
+                    board[r][places[0]]=num;
+                    log.push(`행 ${r+1}에서 ${num}은 (${r+1},${places[0]+1}) 칸에만 가능 → ${num} 확정`);
+                    progress=true;
+                }
+            }
+            for(let c=0;c<9;c++){
+                let places=[];
+                for(let r=0;r<9;r++){
+                    if(board[r][c]===0 && candidates(board,r,c).includes(num)) places.push(r);
+                }
+                if(places.length===1){
+                    board[places[0]][c]=num;
+                    log.push(`열 ${c+1}에서 ${num}은 (${places[0]+1},${c+1}) 칸에만 가능 → ${num} 확정`);
+                    progress=true;
+                }
+            }
+            for(let br=0;br<3;br++){
+                for(let bc=0;bc<3;bc++){
+                    let places=[];
+                    for(let r=0;r<3;r++){
+                        for(let c=0;c<3;c++){
+                            let rr=br*3+r, cc=bc*3+c;
+                            if(board[rr][cc]===0 && candidates(board,rr,cc).includes(num)) places.push([rr,cc]);
+                        }
+                    }
+                    if(places.length===1){
+                        let [rr,cc]=places[0];
+                        board[rr][cc]=num;
+                        log.push(`박스 (${br+1},${bc+1})에서 ${num}은 (${rr+1},${cc+1}) 칸에만 가능 → ${num} 확정`);
+                        progress=true;
+                    }
+                }
+            }
+        }
+    }
+
+    setBoard(board);
+    document.getElementById("logBox").innerText = log.length > 0 ? log.join("\n") : "더 이상 논리적으로 풀 수 없습니다.";
+    document.getElementById("logBox").scrollTop = document.getElementById("logBox").scrollHeight;
+    checkGameFinished();
+}
+
+function generateFullBoard(){
+    let board = Array.from({length:9},()=>Array(9).fill(0));
+    function isValid(board,row,col,num){
+        for(let i=0;i<9;i++) if(board[row][i]===num || board[i][col]===num) return false;
+        let sr=row-row%3, sc=col-col%3;
+        for(let r=0;r<3;r++) for(let c=0;c<3;c++) if(board[sr+r][sc+c]===num) return false;
+        return true;
+    }
+    function fillBoard(board){
+        for(let r=0;r<9;r++){
+            for(let c=0;c<9;c++){
+                if(board[r][c]===0){
+                    let nums=[1,2,3,4,5,6,7,8,9].sort(()=>Math.random()-0.5);
+                    for(let num of nums){
+                        if(isValid(board,r,c,num)){
+                            board[r][c]=num;
+                            if(fillBoard(board)) return true;
+                            board[r][c]=0;
+                        }
+                    }
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+    fillBoard(board);
+    return board;
+}
+
+function checkIsLogicallySolvable(quizBoard) {
+    let testBoard = JSON.parse(JSON.stringify(quizBoard));
+    let progress = true;
+    
+    while(progress) {
+        progress = false;
+        for(let r=0; r<9; r++){
+            for(let c=0; c<9; c++){
+                if(testBoard[r][c] === 0) {
+                    let cand = candidates(testBoard, r, c);
+                    if(cand.length === 1) { testBoard[r][c] = cand[0]; progress = true; }
+                }
+            }
+        }
+        for(let num=1; num<=9; num++){
+            for(let r=0; r<9; r++){
+                let places = [];
+                for(let c=0; c<9; c++) if(testBoard[r][c]===0 && candidates(testBoard,r,c).includes(num)) places.push(c);
+                if(places.length === 1) { testBoard[r][places[0]] = num; progress = true; }
+            }
+            for(let c=0; c<9; c++){
+                let places = [];
+                for(let r=0; r<9; r++) if(testBoard[r][c]===0 && candidates(testBoard,r,c).includes(num)) places.push(r);
+                if(places.length === 1) { testBoard[places[0]][c] = num; progress = true; }
+            }
+            for(let br=0; br<3; br++){
+                for(let bc=0; bc<3; bc++){
+                    let places = [];
+                    for(let r=0; r<3; r++){
+                        for(let c=0; c<3; c++){
+                            let rr=br*3+r, cc=bc*3+c;
+                            if(testBoard[rr][cc]===0 && candidates(testBoard,rr,cc).includes(num)) places.push([rr,cc]);
+                        }
+                    }
+                    if(places.length === 1) { testBoard[places[0][0]][places[0][1]] = num; progress = true; }
+                }
+            }
+        }
+    }
+    return !testBoard.some(row => row.includes(0));
+}
+
+function generateSudoku(){
+    if (isGameActive) {
+        document.getElementById("confirmOverlay").style.display = "flex";
+        return;
+    }
+    startNewGameProcess();
+}
+
+function confirmNewGame() {
+    document.getElementById("confirmOverlay").style.display = "none";
+    startNewGameProcess();
+}
+
+function cancelNewGame() {
+    document.getElementById("confirmOverlay").style.display = "none";
+}
+
+function startNewGameProcess(){
+    clearBackgrounds();
+    clearSelectedEffects();
+    hintCount = 0;
+    errorCount = 0;
+    wasAutoSolved = false;
+    isGameActive = true;
+    document.getElementById("logBox").innerText = "⏳ 새로운 문제를 생성 중입니다...";
+    lastFocusedInput = null; 
+    
+    setTimeout(() => {
+        let level = document.getElementById("difficulty").value;
+        let targetBlanks = level==="easy" ? 48 : (level==="medium" ? 53 : 57);
+        
+        let fullBoard = generateFullBoard();
+        let quizBoard = JSON.parse(JSON.stringify(fullBoard));
+        
+        let cells = [];
+        for(let r=0; r<9; r++) for(let c=0; c<9; c++) cells.push({r, c});
+        cells.sort(() => Math.random() - 0.5);
+
+        let currentBlanks = 0;
+        let cellIndex = 0;
+
+        function processStep() {
+            let startTime = Date.now();
+            // 16ms 이하로 작업하여 프레임 드랍 및 ANR 방지
+            while (cellIndex < cells.length && currentBlanks < targetBlanks && (Date.now() - startTime < 16)) {
+                let cell = cells[cellIndex];
+                let backupValue = quizBoard[cell.r][cell.c];
+                quizBoard[cell.r][cell.c] = 0;
+                
+                if(checkIsLogicallySolvable(quizBoard)) {
+                    currentBlanks++;
+                } else {
+                    quizBoard[cell.r][cell.c] = backupValue;
+                }
+                cellIndex++;
+            }
+
+            if (cellIndex < cells.length && currentBlanks < targetBlanks) {
+                setTimeout(processStep, 0);
+            } else {
+                currentSolution = JSON.parse(JSON.stringify(fullBoard));
+
+                const rows=table.rows;
+                for(let r=0;r<9;r++){
+                    for(let c=0;c<9;c++){
+                        const input=rows[r].cells[c].firstChild;
+                        input.value= quizBoard[r][c]===0 ? "" : quizBoard[r][c];
+
+                        if(quizBoard[r][c]===0) {
+                            input.dataset.editable = "true";
+                            input.style.color = "blue";
+                        } else {
+                            input.dataset.editable = "false";
+                            input.style.color = "black";
+                        }
+                        input.classList.remove("wrong-input");
+                    }
+                }
+                document.getElementById("logBox").innerText = "🎲 문제가 생성되었습니다!\n빈칸을 터치해서 선택하고 아래 숫자 버튼을 누르세요.";
+            }
+        }
+        processStep();
+    }, 50);
+}
+
+const canvas = document.getElementById('fwCanvas');
+const ctx = canvas.getContext('2d');
+let particles = [];
+let fwInterval;
+
+function startFireworks() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    fwInterval = setInterval(() => {
+        for(let i=0; i<3; i++) createFirework();
+    }, 450);
+    animate();
+}
+
+function stopFireworks() {
+    clearInterval(fwInterval);
+    particles = [];
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+}
+
+function createFirework() {
+    const x = Math.random() * canvas.width;
+    const y = Math.random() * canvas.height * 0.45;
+    const color = `hsl(${Math.random() * 360}, 100%, 60%)`;
+    for (let i = 0; i < 60; i++) {
+        particles.push({
+            x, y,
+            vx: (Math.random() - 0.5) * 10,
+            vy: (Math.random() - 0.5) * 10,
+            alpha: 1,
+            color
+        });
+    }
+}
+
+function animate() {
+    if (particles.length === 0) return;
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.15)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    particles.forEach((p, i) => {
+        p.x += p.vx; p.y += p.vy; p.alpha -= 0.012;
+        ctx.globalAlpha = p.alpha;
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 2.5, 0, Math.PI * 2);
+        ctx.fill();
+        if (p.alpha <= 0) particles.splice(i, 1);
+    });
+    requestAnimationFrame(animate);
+}
+
+window.addEventListener('resize', () => {
+    if (particles.length > 0) {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+    }
+});
+</script>
+
+</body>
+</html>

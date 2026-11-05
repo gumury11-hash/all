@@ -1,0 +1,1157 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>단어 학습</title>
+    <style>
+        :root {
+            --bg-1: #fff9f3;
+            --bg-2: #f6dcc2;
+            --metal-1: #fffdfb;
+            --metal-2: #f9eee3;
+            --metal-3: #f0d1ae;
+            --metal-4: #e7b884;
+            --metal-5: #b7773d;
+            --steel-1: #d88f4b;
+            --steel-2: #b96f2a;
+            --steel-3: #7d4314;
+            --ice-1: #fff1df;
+            --ice-2: #f7d9b5;
+            --panel-edge: rgba(219, 154, 95, 0.7);
+            --panel-shadow: rgba(108, 66, 27, 0.12);
+            --text-color: #3d2a1d;
+            --muted: #7d5943;
+            --soft: #a47a5a;
+            --primary-color: #d98a41;
+            --primary-hover: #b9691d;
+            --success-color: #d88d4a;
+            --warning-color: #e9b87d;
+            --error-color: #b14d2d;
+            --button-text: #fffaf6;
+            --glow: rgba(255, 184, 111, 0.24);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background:
+                radial-gradient(circle at top, rgba(255,255,255,0.82), rgba(255,255,255,0) 36%),
+                linear-gradient(180deg, var(--bg-1), var(--bg-2));
+            color: var(--text-color);
+            margin: 0;
+            padding: 10px;
+            box-sizing: border-box;
+            -webkit-text-size-adjust: 100%;
+        }
+
+        .container {
+            max-width: 100%;
+            width: 100%;
+            margin: 0 auto;
+            background: linear-gradient(180deg, rgba(255,255,255,0.78), rgba(224,231,238,0.82));
+            padding: 18px 16px 16px;
+            border-radius: 28px;
+            border: 1px solid rgba(255,255,255,0.9);
+            box-shadow: 0 18px 30px var(--panel-shadow), inset 0 1px 0 rgba(255,255,255,0.85);
+            box-sizing: border-box;
+            overflow-x: hidden;
+        }
+
+        h1 {
+            text-align: center;
+            color: var(--primary-color);
+            font-size: 20px;
+            margin-bottom: 18px;
+            word-break: keep-all;
+            letter-spacing: 0.04em;
+            font-weight: 900;
+            text-shadow: 0 1px 0 rgba(255,255,255,0.8);
+        }
+
+        .api-key-section,
+        .control-panel,
+        .word-card,
+        .history-item {
+            background: linear-gradient(180deg, rgba(255,255,255,0.94), rgba(250,238,223,0.94));
+            border: 1px solid var(--panel-edge);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.9), 0 10px 18px rgba(15, 23, 42, 0.04);
+        }
+
+        .api-key-section {
+            padding: 15px;
+            border-radius: 18px;
+            margin-bottom: 20px;
+            box-sizing: border-box;
+        }
+
+        .api-key-row {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .api-key-row input,
+        .form-group select,
+        .writing-input {
+            width: 100%;
+            padding: 12px 13px;
+            border: 1px solid rgba(221, 177, 128, 0.8);
+            border-radius: 12px;
+            font-size: 14px;
+            color: var(--text-color);
+            background: rgba(255,255,255,0.92);
+            box-sizing: border-box;
+            outline: none;
+        }
+
+        .api-key-row input:focus,
+        .form-group select:focus,
+        .writing-input:focus {
+            border-color: rgba(196, 120, 52, 0.8);
+            box-shadow: 0 0 0 3px rgba(233, 172, 109, 0.13);
+        }
+
+        .btn-api,
+        .help-trigger-btn,
+        .btn-load,
+        .btn-all-repeat,
+        .btn-group button,
+        .btn-delete-icon,
+        .modal-close {
+            transition: transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease;
+        }
+
+        .btn-api {
+            background: linear-gradient(180deg, #fff2df, #f1c38d);
+            color: var(--steel-3);
+            border: 1px solid rgba(196, 124, 58, 0.9);
+            padding: 12px;
+            font-weight: 800;
+            border-radius: 12px;
+            cursor: pointer;
+            width: 100%;
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.9), 0 10px 18px rgba(130, 89, 45, 0.12);
+        }
+        .btn-api:hover,
+        .help-trigger-btn:hover,
+        .btn-load:hover,
+        .btn-all-repeat:hover,
+        .btn-group button:hover,
+        .modal-close:hover,
+        .btn-delete-icon:hover {
+            transform: translateY(-1px);
+            filter: brightness(1.02);
+        }
+
+        .api-status {
+            margin-top: 8px;
+            font-size: 12px;
+            font-weight: bold;
+            color: var(--error-color);
+            word-break: break-all;
+        }
+
+        .help-trigger-btn {
+            background: linear-gradient(180deg, #fff6ec, #f7d6a7);
+            color: var(--steel-3);
+            border: 1px solid rgba(204, 139, 76, 0.8);
+            padding: 6px 10px;
+            font-size: 12px;
+            border-radius: 999px;
+            cursor: pointer;
+            font-weight: 800;
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.8);
+        }
+
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(15, 23, 42, 0.38);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            padding: 15px;
+            box-sizing: border-box;
+        }
+
+        .modal-content {
+            background: linear-gradient(180deg, rgba(255,255,255,0.97), rgba(255,244,233,0.95));
+            padding: 20px;
+            border-radius: 20px;
+            max-width: 500px;
+            width: 100%;
+            box-shadow: 0 18px 30px rgba(15,23,42,0.12);
+            position: relative;
+            line-height: 1.6;
+            border: 1px solid rgba(223, 176, 127, 0.8);
+            box-sizing: border-box;
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 15px; right: 15px;
+            background: rgba(255,255,255,0.7);
+            border: 1px solid rgba(203,213,225,0.9);
+            font-size: 18px;
+            cursor: pointer;
+            color: #4b5563;
+            width: 34px;
+            height: 34px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+        }
+
+        .control-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 15px;
+            padding: 15px;
+            border-radius: 18px;
+            box-sizing: border-box;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        label {
+            font-weight: 700;
+            margin-bottom: 5px;
+            font-size: 13px;
+            color: var(--text-color);
+        }
+
+        select, button {
+            padding: 12px;
+            font-size: 15px;
+            border-radius: 12px;
+            outline: none;
+            box-sizing: border-box;
+        }
+
+        .action-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .btn-load {
+            background: linear-gradient(180deg, var(--primary-color), var(--primary-hover));
+            color: var(--button-text);
+            font-weight: 800;
+            cursor: pointer;
+            width: 100%;
+            padding: 14px;
+            box-sizing: border-box;
+            border: 1px solid rgba(176, 108, 42, 0.9);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.14), 0 12px 20px rgba(132, 84, 34, 0.14);
+        }
+        .btn-load:disabled { background: linear-gradient(180deg, #f3e1cf, #e7c19a); color: #8d6743; cursor: not-allowed; box-shadow: none; }
+
+        .btn-all-repeat {
+            background: linear-gradient(180deg, #efb877, #d7853c);
+            color: var(--button-text);
+            font-weight: 800;
+            cursor: pointer;
+            width: 100%;
+            padding: 14px;
+            box-sizing: border-box;
+            border: 1px solid rgba(185, 113, 45, 0.9);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.12), 0 12px 20px rgba(189, 127, 70, 0.14);
+        }
+        .btn-all-repeat:disabled { background: linear-gradient(180deg, #f3e1cf, #e7c19a); color: #8d6743; cursor: not-allowed; box-shadow: none; }
+
+        .word-card {
+            border-radius: 18px;
+            padding: 15px;
+            margin-bottom: 12px;
+            box-sizing: border-box;
+        }
+
+        .word-header {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        @media (min-width: 480px) {
+            .word-header {
+                flex-direction: row;
+                justify-content: space-between;
+                align-items: center;
+            }
+        }
+
+        .word-title {
+            font-size: 22px;
+            font-weight: 800;
+            color: #422c1d;
+            word-break: break-all;
+            line-height: 1.4;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 6px;
+        }
+
+        .btn-group button {
+            flex: 1;
+            padding: 8px 10px;
+            font-size: 13px;
+            cursor: pointer;
+            background: linear-gradient(180deg, #fff8f0, #f3d5ae);
+            border: 1px solid rgba(204, 146, 86, 0.9);
+            border-radius: 10px;
+            color: #704a2f;
+            font-weight: 800;
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.7);
+        }
+
+        .writing-area {
+            margin-top: 12px;
+            display: flex;
+            flex-direction: column;
+        }
+        .writing-area label {
+            font-size: 12px;
+            color: var(--muted);
+            margin-bottom: 5px;
+            font-weight: 700;
+        }
+        .writing-input {
+            padding: 12px 14px;
+            border: 1px dashed rgba(148, 163, 184, 0.9);
+            border-radius: 10px;
+            font-size: 18px;
+            line-height: 1.4;
+            box-sizing: border-box;
+            background: rgba(255,255,255,0.85);
+        }
+
+        #historySection {
+            margin-top: 30px;
+            border-top: 2px solid rgba(203, 213, 225, 0.9);
+            padding-top: 15px;
+            box-sizing: border-box;
+        }
+
+        .history-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .history-item {
+            border-radius: 16px;
+            padding: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-sizing: border-box;
+            gap: 10px;
+        }
+
+        .history-content {
+            flex: 1;
+            cursor: pointer;
+            word-break: break-all;
+        }
+
+        .history-content:active {
+            opacity: 0.7;
+        }
+
+        .history-time {
+            font-weight: 800;
+            font-size: 14px;
+            color: #54351f;
+            margin-bottom: 2px;
+            display: block;
+        }
+
+        .history-desc {
+            font-size: 11px;
+            color: var(--muted);
+            line-height: 1.3;
+        }
+
+        .btn-delete-icon {
+            background: linear-gradient(180deg, #fffaf4, #f3d7b3);
+            border: 1px solid rgba(198, 156, 111, 0.8);
+            color: var(--steel-3);
+            font-size: 16px;
+            cursor: pointer;
+            padding: 6px 10px;
+            border-radius: 10px;
+            flex-shrink: 0;
+            font-weight: 800;
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.8);
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>단어학습</h1>
+
+    <div id="apiKeySection" class="api-key-section">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <label for="apiKeyInput"><strong>Google Gemini API 키 입력</strong></label>
+            <button class="help-trigger-btn" onclick="openHelpModal()">도움말</button>
+        </div>
+        <div class="api-key-row">
+            <input type="password" id="apiKeyInput" placeholder="AIzaSy... 키 입력">
+            <button class="btn-api" onclick="saveApiKey()">키 등록하기</button>
+        </div>
+        <div id="apiStatus" class="api-status">⚠️ API 키가 등록되지 않았습니다.</div>
+    </div>
+
+    <div id="helpModal" class="modal-overlay">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeHelpModal()">✕</button>
+            <h3 style="margin-top: 0; color: #c96a29; font-size: 18px;">💡 API 키 발급 방법</h3>
+            <div style="font-size:13px; line-height:1.6; color:#374151;">
+                <ol style="padding-left: 18px;">
+                    <li><strong>Google AI Studio 접속 및 로그인</strong>
+                        <div style="margin-top:6px; color:#6b7280;">• <a href="https://aistudio.google.com/" target="_blank" rel="noopener">Google AI Studio</a> 웹사이트에 접속합니다.<br>• Google 계정으로 로그인합니다.</div>
+                    </li>
+                    <li style="margin-top:8px;"><strong>API Key 생성 페이지 이동</strong>
+                        <div style="margin-top:6px; color:#6b7280;">• 로그인 후 화면 좌측 사이드 메뉴 또는 메인 화면에서 <strong>Get API key</strong> (또는 <strong>Create API key</strong>) 버튼을 클릭합니다.</div>
+                    </li>
+                    <li style="margin-top:8px;"><strong>API Key 발급</strong>
+                        <div style="margin-top:6px; color:#6b7280;">• <strong>Create API key</strong> 버튼을 누릅니다.<br>• 연결할 Google Cloud 프로젝트를 선택하거나 새로운 프로젝트를 생성합니다.<br>• 생성 버튼을 누르면 <code>AIza...</code>로 시작하는 키 문자열이 즉시 발급됩니다. (키는 팝업으로 표시됩니다)</div>
+                    </li>
+                </ol>
+
+                <p style="margin-top:10px; color:#6b7280;">발급된 키를 복사한 후 이 화면의 입력창에 붙여넣고 <strong>키 등록하기</strong> 버튼을 눌러 등록하세요.</p>
+
+                <div style="display:flex; gap:8px; margin-top:12px; justify-content:flex-end;">
+                    <button class="help-trigger-btn" onclick="closeHelpModal()">닫기</button>
+                    <button class="btn-api" onclick="pasteApiKeyFromClipboard()">클립보드에서 붙여넣기 및 등록</button>
+                    <button class="btn-api" onclick="window.open('https://aistudio.google.com/', '_blank')">생성화면 이동</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="control-panel">
+        <div class="form-group">
+            <label for="langSelect">언어 선택</label>
+            <select id="langSelect">
+                <option value="en-US">영어 (미국)</option>
+                <option value="en-GB">영어 (영국)</option>
+                <option value="ja-JP">일본어</option>
+                <option value="zh-CN">중국어 (간체)</option>
+                <option value="zh-TW">중국어 (번체)</option>
+                <option value="es-ES">스페인어</option>
+                <option value="fr-FR">프랑스어</option>
+                <option value="de-DE">독일어</option>
+                <option value="it-IT">이탈리아어</option>
+                <option value="pt-BR">포르투갈어</option>
+                <option value="vi-VN">베트남어</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="levelSelect">난이도 선택</label>
+            <select id="levelSelect">
+                <option value="beginner">초급</option>
+                <option value="intermediate">중급</option>
+                <option value="advanced">고급</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="studyTypeSelect">학습 종류</label>
+            <select id="studyTypeSelect">
+                <option value="word">단어</option>
+                <option value="phrase">표현</option>
+                <option value="sentence">문장</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="situationSelect">상황 종류</label>
+            <select id="situationSelect">
+                <option value="travel">공항/여행</option>
+                <option value="business">비즈니스/회사</option>
+                <option value="daily">일상/식사</option>
+                <option value="emergency">비상/사건</option>
+                <option value="shopping">쇼핑/마트</option>
+                <option value="school">학교/학습</option>
+                <option value="health">건강/병원</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="action-buttons">
+        <button id="loadBtn" class="btn-load" onclick="loadWords()" disabled>학습 단어 생성</button>
+        <button id="allRepeatBtn" class="btn-all-repeat" onclick="playAllWords()" disabled>전체 반복듣기</button>
+    </div>
+
+    <div id="wordListContainer">
+        <p style="text-align: center; color: #6b7280; font-size: 13px;">API 키 등록 후 단어장을 생성해 주세요.</p>
+    </div>
+
+    <div id="historySection">
+        <h3 style="font-size: 16px; margin-bottom: 5px;">학습 기록 관리</h3>
+        <p style="font-size: 11px; color: #6b7280; margin-top: 0; margin-bottom: 10px;">기록을 터치하면 다시 공부할 수 있습니다.</p>
+        <div id="historyListContainer" class="history-list">
+            <div style="color: #6b7280; font-size: 13px; text-align: center; padding: 10px;">기록이 없습니다.</div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let userApiKey = "";
+    let currentLoadedWords = [];
+    let currentActiveHistoryId = null;
+    const SHARED_API_KEY_STORAGE = "gemini_api_key";
+    const LEGACY_API_KEY_STORAGE = "gemini_flash_lite_key";
+
+    const studyTypeMap = {
+        word: { label: '단어', build: (items) => items },
+        phrase: { label: '표현', build: (items) => items.map((item) => ({ ...item, word: `${item.word} / ${item.meaning}` })) },
+        sentence: {
+            label: '문장',
+            build: (items) => items.map((item) => ({
+                ...item,
+                word: `${item.word}를(을) 활용한 문장 예시: "${item.word} is useful in this situation."`,
+                meaning: item.meaning
+            }))
+        }
+    };
+
+    // Local `wordDatabase` removed — Gemini 3.5 Flash Lite API is used instead.
+    // Keeping no local fallback to reduce bundle size and rely on API generation.
+
+    function getQueryParam(name) {
+        try {
+            const params = new URLSearchParams(window.location.search);
+            const v = params.get(name);
+            return v ? v.trim() : null;
+        } catch (e) { return null; }
+    }
+
+    window.onload = function() {
+        const savedKey = localStorage.getItem(SHARED_API_KEY_STORAGE)
+            || localStorage.getItem(LEGACY_API_KEY_STORAGE);
+        // 기존 단어학습 전용 키가 있으면 공용 키로 자동 이전
+        if (savedKey && !localStorage.getItem(SHARED_API_KEY_STORAGE)) {
+            localStorage.setItem(SHARED_API_KEY_STORAGE, savedKey);
+        }
+        // 1) prefer saved key in localStorage
+        if (savedKey) {
+            userApiKey = savedKey;
+            applyRegisteredState();
+        } else {
+            // 2) try to read apiKey from URL query (?apiKey=...)
+            const urlKey = getQueryParam('apiKey');
+            if (urlKey) {
+                userApiKey = urlKey;
+                localStorage.setItem(SHARED_API_KEY_STORAGE, userApiKey);
+                applyRegisteredState();
+            } else {
+                applyUnregisteredState();
+            }
+        }
+
+        // 3) listen for postMessage from opener (allows ai-study.html to send key or generated words)
+        window.addEventListener('message', (ev) => {
+            try {
+                const data = typeof ev.data === 'string' ? JSON.parse(ev.data) : ev.data;
+
+                // set API key from external page
+                if (data && data.type === 'setApiKey' && data.key) {
+                    userApiKey = String(data.key).trim();
+                    if (userApiKey) {
+                        localStorage.setItem(SHARED_API_KEY_STORAGE, userApiKey);
+                        applyRegisteredState();
+                        alert('외부에서 API 키를 받아 등록했습니다.');
+                    }
+                    return;
+                }
+
+                // receive generated words payload from external page (ai-study.html)
+                // expected shape: { type: 'wordsGenerated', payload: { words: [...], meta: {...} } }
+                if (data && data.type === 'wordsGenerated' && data.payload) {
+                    const p = data.payload;
+                    const words = Array.isArray(p.words) ? p.words : [];
+
+                    // metadata fallbacks to selects when not provided
+                    const langVal = p.langVal || document.getElementById('langSelect').value;
+                    const levelVal = p.levelVal || document.getElementById('levelSelect').value;
+                    const studyTypeVal = p.studyTypeVal || document.getElementById('studyTypeSelect').value;
+                    const sitVal = p.sitVal || document.getElementById('situationSelect').value;
+
+                    const langText = p.langText || document.getElementById('langSelect').options[document.getElementById('langSelect').selectedIndex].text;
+                    const levelText = p.levelText || document.getElementById('levelSelect').options[document.getElementById('levelSelect').selectedIndex].text;
+                    const studyTypeText = p.studyTypeText || studyTypeMap[studyTypeVal].label;
+                    const situationText = p.situationText || document.getElementById('situationSelect').options[document.getElementById('situationSelect').selectedIndex].text;
+
+                    if (words.length === 0) {
+                        alert('외부에서 전달된 단어 목록이 비어 있습니다.');
+                        return;
+                    }
+
+                    // render and save history
+                    renderWordsAndHistory(words, langText, levelText, studyTypeText, situationText, langVal, levelVal, studyTypeVal, sitVal, true);
+                    alert('외부에서 생성된 단어를 불러왔습니다.');
+                    return;
+                }
+            } catch (e) { /* ignore malformed messages */ }
+        }, false);
+
+        // Load persisted history
+        loadHistoryFromStorage();
+    };
+    
+
+    function applyUnregisteredState() {
+        const section = document.getElementById('apiKeySection');
+        if (section) section.style.display = 'block';
+        document.getElementById('loadBtn').disabled = true;
+        document.getElementById('loadBtn').innerText = '학습 단어 생성';
+        const statusEl = document.getElementById('apiStatus');
+        if (statusEl) statusEl.textContent = '⚠️ API 키가 등록되지 않았습니다.';
+    }
+
+    function getStoredHistory() {
+        try {
+            const raw = localStorage.getItem('gemini_flash_history');
+            if (!raw) return [];
+            return JSON.parse(raw);
+        } catch (e) { return []; }
+    }
+
+    function saveStoredHistory(arr) {
+        try {
+            localStorage.setItem('gemini_flash_history', JSON.stringify(arr));
+        } catch (e) { console.warn('saveStoredHistory error', e); }
+    }
+
+    function loadHistoryFromStorage() {
+        const arr = getStoredHistory();
+        const historyListContainer = document.getElementById('historyListContainer');
+        if (!historyListContainer) return;
+        if (arr.length === 0) return;
+        historyListContainer.innerHTML = '';
+        arr.slice().reverse().forEach(record => {
+            const itemDiv = document.createElement('div');
+            itemDiv.className = 'history-item';
+            itemDiv.id = record.id;
+            const wordsJson = encodeURIComponent(JSON.stringify(record.words));
+            const successCount = record.successCount || 0;
+            itemDiv.innerHTML = `
+                <div class="history-content" data-words="${wordsJson}" onclick="studyAgain('${record.langVal}', '${record.levelVal}', '${record.studyTypeVal}', '${record.sitVal}', '${record.langText}', '${record.levelText}', '${record.studyTypeText}', '${record.situationText}', '${wordsJson}')">
+                    <span class="history-time">${record.timeString}</span>
+                    <div class="history-desc">[${record.langText}] ${record.levelText} / ${record.studyTypeText} / ${record.situationText} <strong style="margin-left:8px; color:#2f9e44;">성공 ${successCount}회</strong></div>
+                </div>
+                <button class="btn-delete-icon" onclick="deleteHistoryRow('${record.id}')" title="삭제">⌫</button>
+            `;
+            historyListContainer.prepend(itemDiv);
+        });
+    }
+
+    function saveApiKey() {
+        const inputVal = document.getElementById('apiKeyInput').value.trim();
+        if (!inputVal) {
+            alert("유효한 API 키를 입력해주세요.");
+            return;
+        }
+        userApiKey = inputVal;
+        localStorage.setItem(SHARED_API_KEY_STORAGE, userApiKey);
+        applyRegisteredState();
+        alert("API 키가 등록되었습니다.");
+    }
+
+    async function pasteApiKeyFromClipboard() {
+        if (!navigator.clipboard || !navigator.clipboard.readText) {
+            alert('클립보드 기능을 지원하지 않는 브라우저입니다. 수동으로 붙여넣기 해주세요.');
+            return;
+        }
+        try {
+            const text = await navigator.clipboard.readText();
+            if (!text) {
+                alert('클립보드에 텍스트가 없습니다. 키를 복사한 후 다시 시도하세요.');
+                return;
+            }
+            const trimmed = text.trim();
+            document.getElementById('apiKeyInput').value = trimmed;
+            // if it looks like an API key, auto-save
+            if (trimmed.startsWith('AIza') || trimmed.length > 30) {
+                userApiKey = trimmed;
+                localStorage.setItem(SHARED_API_KEY_STORAGE, userApiKey);
+                applyRegisteredState();
+                alert('클립보드에서 API 키를 붙여넣고 등록했습니다.');
+            } else {
+                alert('클립보드 내용을 입력창에 붙여넣었습니다. 등록하려면 "키 등록하기"를 눌러주세요.');
+            }
+            closeHelpModal();
+        } catch (e) {
+            console.warn('pasteApiKeyFromClipboard error', e);
+            alert('클립보드에서 키를 읽을 수 없습니다. 브라우저 권한을 확인하세요.');
+        }
+    }
+
+    function applyRegisteredState() {
+        const section = document.getElementById('apiKeySection');
+        if (section) section.style.display = 'none';
+        
+        document.getElementById('loadBtn').disabled = false;
+        document.getElementById('loadBtn').innerText = "학습 단어 생성 및 기록 저장";
+    }
+
+    function openHelpModal() {
+        document.getElementById('helpModal').style.display = 'flex';
+    }
+
+    function closeHelpModal() {
+        document.getElementById('helpModal').style.display = 'none';
+    }
+
+    function speakText(text, lang) {
+        if (!('speechSynthesis' in window)) return;
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = lang;
+        window.speechSynthesis.speak(utterance);
+    }
+
+    function repeatSpeak(text, lang) {
+        if (!('speechSynthesis' in window)) return;
+        window.speechSynthesis.cancel();
+        const u1 = new SpeechSynthesisUtterance(text);
+        u1.lang = lang;
+        const u2 = new SpeechSynthesisUtterance(text);
+        u2.lang = lang;
+        u1.onend = () => setTimeout(() => window.speechSynthesis.speak(u2), 300);
+        window.speechSynthesis.speak(u1);
+    }
+
+    function playAllWords() {
+        if (!currentLoadedWords || currentLoadedWords.length === 0) return;
+        if (!('speechSynthesis' in window)) return;
+        window.speechSynthesis.cancel();
+
+        const lang = document.getElementById('langSelect').value;
+        let index = 0;
+
+        function playNext() {
+            if (index >= currentLoadedWords.length) return;
+            const utterance = new SpeechSynthesisUtterance(currentLoadedWords[index].word);
+            utterance.lang = lang;
+            utterance.onend = () => {
+                index++;
+                setTimeout(playNext, 400);
+            };
+            window.speechSynthesis.speak(utterance);
+        }
+        playNext();
+    }
+
+    function formatDateTime(date) {
+        const y = date.getFullYear();
+        const m = String(date.getMonth() + 1).padStart(2, '0');
+        const d = String(date.getDate()).padStart(2, '0');
+        const h = String(date.getHours()).padStart(2, '0');
+        const min = String(date.getMinutes()).padStart(2, '0');
+        const s = String(date.getSeconds()).padStart(2, '0');
+        return `${y}/${m}/${d} ${h}:${min}:${s}`;
+    }
+
+    function shuffleArray(array) {
+        const arr = [...array];
+        for (let i = arr.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [arr[i], arr[j]] = [arr[j], arr[i]];
+        }
+        return arr;
+    }
+
+    // Gemini / Generative Language API helper - tries Gemini 3.5 (Flash Lite) endpoints first,
+    // falls back to other Generative Language endpoints. Returns array of {word, meaning}.
+    async function generateWordsWithGemini({langText, levelText, studyTypeText, situationText, selectedLang, selectedLevel, selectedStudyType, selectedSituation, count = 10, excludedWords = []}) {
+        if (!userApiKey) throw new Error('API key missing');
+
+        const excludedText = excludedWords.length
+            ? ` Do not use any of these already selected items: ${excludedWords.join(', ')}.`
+            : '';
+        const prompt = `Generate ${count} unique ${studyTypeText} for the situation '${situationText}' at ${levelText} level in ${langText}. ` +
+            `Every item must differ from the others.${excludedText} ` +
+            `Return ONLY a JSON array of objects with keys \"word\" and \"meaning\" (meaning in Korean). No extra text or Markdown.`;
+
+        // Try endpoints — prefer the gemini-3.6-flash generateContent endpoint (matches ai-study.html)
+        const endpoints = [
+            'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key='
+        ];
+
+        // Default body for older /generate endpoints
+        const bodyTemplate = {
+            prompt: { text: prompt },
+            temperature: 0.2,
+            maxOutputTokens: 512
+        };
+
+        let lastErr = null;
+        for (const base of endpoints) {
+            const endpoint = base + encodeURIComponent(userApiKey);
+            try {
+                // choose request body shape depending on endpoint
+                const isGenerateContent = endpoint.includes('generateContent');
+                const requestBody = isGenerateContent ? { contents: [{ parts: [{ text: prompt }] }] } : bodyTemplate;
+
+                const res = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(requestBody)
+                });
+
+                if (!res.ok) {
+                    const text = await res.text().catch(() => '');
+                    lastErr = new Error(`API error ${res.status}: ${text}`);
+                    console.warn('Endpoint failed:', endpoint, lastErr);
+                    continue; // try next endpoint
+                }
+
+                const json = await res.json().catch(() => null);
+                let content = '';
+
+                // gemini-3.6-flash generateContent response shape (ai-study): data.candidates[0].content.parts[0].text
+                if (json && json.candidates && json.candidates[0] && json.candidates[0].content && Array.isArray(json.candidates[0].content.parts)) {
+                    // join parts if multiple
+                    content = json.candidates[0].content.parts.map(p => p.text || '').join('\n').trim();
+                } else if (json && json.candidates && json.candidates[0] && json.candidates[0].content) {
+                    content = json.candidates[0].content;
+                } else if (json && json.output && json.output[0] && json.output[0].content) {
+                    content = json.output[0].content;
+                } else if (json && json.result && json.result.output && json.result.output[0]) {
+                    content = json.result.output[0].content || '';
+                } else if (json && json.outputText) {
+                    content = json.outputText;
+                } else if (json) {
+                    content = JSON.stringify(json);
+                }
+
+                // Extract JSON array or try to parse content directly
+                const firstArrayMatch = content.match(/\[\s*\{[\s\S]*?\}\s*\]/);
+                let parsed = null;
+                if (firstArrayMatch) {
+                    parsed = JSON.parse(firstArrayMatch[0]);
+                } else {
+                    try { parsed = JSON.parse(content); } catch (e) { parsed = null; }
+                }
+
+                if (!parsed || !Array.isArray(parsed)) {
+                    lastErr = new Error('Unable to parse API response as JSON array');
+                    console.warn('Parsing failed for endpoint:', endpoint, content);
+                    continue; // try next endpoint
+                }
+
+                const items = parsed.map(it => ({ word: String(it.word || it.text || it.title || '').trim(), meaning: String(it.meaning || it.translation || it.korean || it.kor || it.explanation || '').trim() })).filter(i => i.word);
+                return items.slice(0, count);
+            } catch (err) {
+                lastErr = err;
+                console.warn('generateWordsWithGemini request error:', err);
+                continue;
+            }
+        }
+
+        throw lastErr || new Error('All endpoints failed');
+    }
+
+    async function loadWords() {
+        if (!userApiKey) {
+            alert("API 키가 등록되어 있지 않습니다.");
+            return;
+        }
+
+        const langSelect = document.getElementById('langSelect');
+        const levelSelect = document.getElementById('levelSelect');
+        const studyTypeSelect = document.getElementById('studyTypeSelect');
+        const situationSelect = document.getElementById('situationSelect');
+
+        const selectedLang = langSelect.value;
+        const selectedLevel = levelSelect.value;
+        const selectedStudyType = studyTypeSelect.value;
+        const selectedSituation = situationSelect.value;
+
+        const langText = langSelect.options[langSelect.selectedIndex].text;
+        const levelText = levelSelect.options[levelSelect.selectedIndex].text;
+        const studyTypeText = studyTypeMap[selectedStudyType].label;
+        const situationText = situationSelect.options[situationSelect.selectedIndex].text;
+        // Build set of already-studied words from history and generate via Gemini
+        function getStudiedWordsSet() {
+            const set = new Set();
+            try {
+                const stored = getStoredHistory();
+                stored.forEach(rec => {
+                    if (Array.isArray(rec.words)) {
+                        rec.words.forEach(it => { if (it && it.word) set.add(String(it.word).trim().toLowerCase()); });
+                    }
+                });
+            } catch (e) { /* ignore */ }
+            return set;
+        }
+
+        try {
+            document.getElementById('loadBtn').disabled = true;
+            document.getElementById('loadBtn').innerText = '생성 중...';
+
+            const studiedSet = getStudiedWordsSet();
+            const collected = [];
+            const usedWords = new Set(studiedSet);
+            const maxAttempts = 5;
+            let attempts = 0;
+
+            // Request at most five times. If fewer than ten unique items are found,
+            // render every unique item collected so far.
+            while (collected.length < 10 && attempts < maxAttempts) {
+                attempts++;
+                const remaining = 10 - collected.length;
+                document.getElementById('loadBtn').innerText = `생성 중... ${attempts}/${maxAttempts}회 (${collected.length}/10)`;
+
+                const generated = await generateWordsWithGemini({
+                    langText, levelText, studyTypeText, situationText,
+                    selectedLang, selectedLevel, selectedStudyType, selectedSituation,
+                    count: remaining,
+                    excludedWords: Array.from(usedWords).slice(-100)
+                });
+
+                generated.forEach(item => {
+                    const key = String(item.word || '').trim().replace(/\s+/g, ' ').toLowerCase();
+                    if (key && !usedWords.has(key) && collected.length < 10) {
+                        usedWords.add(key);
+                        collected.push(item);
+                    }
+                });
+            }
+
+            const words = studyTypeMap[selectedStudyType].build(collected);
+            renderWordsAndHistory(words, langText, levelText, studyTypeText, situationText, selectedLang, selectedLevel, selectedStudyType, selectedSituation, true);
+        } catch (err) {
+            console.error('Gemini generation failed:', err);
+            const statusEl = document.getElementById('apiStatus');
+            if (statusEl) statusEl.textContent = 'API 호출 실패: ' + (err && err.message ? err.message : '알 수 없는 오류');
+            alert('단어 생성에 실패했습니다. 콘솔을 확인하세요.');
+        } finally {
+            document.getElementById('loadBtn').disabled = false;
+            document.getElementById('loadBtn').innerText = '학습 단어 생성 및 기록 저장';
+        }
+    }
+
+    function normalizeCheckText(value) {
+        return String(value || '').trim().replace(/\s+/g, ' ').toLowerCase();
+    }
+
+    function handleWritingInput(input, answerText) {
+        const typedValue = normalizeCheckText(input.value);
+        const targetValue = normalizeCheckText(answerText);
+
+        if (!typedValue) {
+            input.style.borderColor = 'rgba(148, 163, 184, 0.9)';
+            input.style.background = 'rgba(255,255,255,0.85)';
+            return;
+        }
+
+        if (typedValue === targetValue) {
+            input.style.borderColor = '#2f9e44';
+            input.style.background = 'rgba(232, 255, 239, 0.9)';
+
+            const nextInput = input.closest('.word-card')?.nextElementSibling?.querySelector('.writing-input');
+            if (nextInput) {
+                setTimeout(() => nextInput.focus(), 120);
+            } else {
+                input.blur();
+            }
+            // if all writing inputs are correct, increment success count for the current history record
+            try {
+                const container = document.getElementById('wordListContainer');
+                const inputs = container.querySelectorAll('.writing-input');
+                const allCorrect = Array.from(inputs).every(i => normalizeCheckText(i.value) === normalizeCheckText(i.dataset.answer));
+                if (allCorrect && container.dataset.completed !== 'true') {
+                    container.dataset.completed = 'true';
+                    incrementSuccessForCurrentHistory();
+                }
+            } catch (e) { /* ignore */ }
+            return;
+        }
+
+        input.style.borderColor = 'rgba(148, 163, 184, 0.9)';
+        input.style.background = 'rgba(255,255,255,0.85)';
+    }
+
+    function renderWordsAndHistory(words, langText, levelText, studyTypeText, situationText, langVal, levelVal, studyTypeVal, sitVal, saveHistory) {
+        // clear any existing writing inputs before rendering
+        function clearWritingInputs() {
+            try {
+                document.querySelectorAll('.writing-input').forEach(i => { i.value = ''; });
+                const containerEl = document.getElementById('wordListContainer');
+                if (containerEl && containerEl.dataset) delete containerEl.dataset.completed;
+            } catch (e) { /* ignore */ }
+        }
+
+        clearWritingInputs();
+
+        currentLoadedWords = words;
+        const container = document.getElementById('wordListContainer');
+        container.innerHTML = '';
+
+        words.forEach((item, index) => {
+            const card = document.createElement('div');
+            card.className = 'word-card';
+            card.innerHTML = `
+                <div class="word-header">
+                    <span class="word-title">${index + 1}. ${item.word} <small style="font-weight:normal; color:#586a7b; font-size: 16px;">(${item.meaning || '예문'})</small></span>
+                    <div class="btn-group">
+                        <button onclick="speakText('${item.word}', '${langVal}')">▶ 듣기</button>
+                        <button onclick="repeatSpeak('${item.word}', '${langVal}')">↻ 반복</button>
+                    </div>
+                </div>
+                <div class="writing-area">
+                    <label>따라 쓰기 연습:</label>
+                    <input type="text" class="writing-input" placeholder="여기에 적어보세요." data-answer="${item.word}">
+                </div>
+            `;
+
+            const writingInput = card.querySelector('.writing-input');
+            writingInput.addEventListener('input', function () {
+                handleWritingInput(this, this.dataset.answer);
+            });
+
+            container.appendChild(card);
+        });
+
+        document.getElementById('allRepeatBtn').disabled = false;
+
+        // focus first writing input (1번 단어에 커서)
+        const firstInput = container.querySelector('.writing-input');
+        if (firstInput) {
+            firstInput.focus();
+            try { firstInput.selectionStart = firstInput.selectionEnd = firstInput.value.length; } catch (e) {}
+        }
+
+        if (saveHistory) {
+            const now = new Date();
+            const timeString = formatDateTime(now);
+            const historyListContainer = document.getElementById('historyListContainer');
+            
+            if (historyListContainer.innerHTML.includes("기록이 없습니다.")) {
+                historyListContainer.innerHTML = "";
+            }
+
+            const rowId = 'row_' + Date.now();
+            const itemDiv = document.createElement('div');
+            itemDiv.className = 'history-item';
+            itemDiv.id = rowId;
+            const wordsJson = encodeURIComponent(JSON.stringify(words));
+
+            itemDiv.innerHTML = `
+                <div class="history-content" data-words="${wordsJson}" onclick="studyAgain('${langVal}', '${levelVal}', '${studyTypeVal}', '${sitVal}', '${langText}', '${levelText}', '${studyTypeText}', '${situationText}', '${wordsJson}')">
+                    <span class="history-time">${timeString}</span>
+                    <div class="history-desc">[${langText}] ${levelText} / ${studyTypeText} / ${situationText} <strong style="margin-left:8px; color:#2f9e44;">성공 0회</strong></div>
+                </div>
+                <button class="btn-delete-icon" onclick="deleteHistoryRow('${rowId}')" title="삭제">⌫</button>
+            `;
+            historyListContainer.prepend(itemDiv);
+
+            // persist to localStorage
+            try {
+                const stored = getStoredHistory();
+                const record = {
+                    id: rowId,
+                    time: now.getTime(),
+                    timeString,
+                    langVal,
+                    levelVal,
+                    studyTypeVal,
+                    sitVal,
+                    langText,
+                    levelText,
+                    studyTypeText,
+                    situationText,
+                    words
+                    , successCount: 0
+                };
+                stored.push(record);
+                saveStoredHistory(stored);
+                currentActiveHistoryId = rowId;
+            } catch (e) { console.warn('persist history failed', e); }
+        }
+    }
+
+    function studyAgain(langVal, levelVal, studyTypeVal, sitVal, langText, levelText, studyTypeText, situationText, wordsJson) {
+        // clear any existing typing inputs before restoring
+        try { document.querySelectorAll('.writing-input').forEach(i => i.value = ''); } catch (e) {}
+
+        document.getElementById('langSelect').value = langVal;
+        document.getElementById('levelSelect').value = levelVal;
+        document.getElementById('studyTypeSelect').value = studyTypeVal;
+        document.getElementById('situationSelect').value = sitVal;
+
+        const words = JSON.parse(decodeURIComponent(wordsJson));
+        // try to find the history record id for these words and set active
+        try {
+            const stored = getStoredHistory();
+            const targetJson = JSON.stringify(words);
+            const found = stored.find(r => JSON.stringify(r.words) === targetJson);
+            currentActiveHistoryId = found ? found.id : null;
+        } catch (e) { currentActiveHistoryId = null; }
+
+        renderWordsAndHistory(words, langText, levelText, studyTypeText, situationText, langVal, levelVal, studyTypeVal, sitVal, false);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function deleteHistoryRow(rowId) {
+        const item = document.getElementById(rowId);
+        if (item) item.remove();
+        const historyListContainer = document.getElementById('historyListContainer');
+        if (historyListContainer.children.length === 0) {
+            historyListContainer.innerHTML = '<div style="color: #6b7280; font-size: 13px; text-align: center; padding: 10px;">기록이 없습니다.</div>';
+        }
+        // remove from localStorage
+        try {
+            const stored = getStoredHistory();
+            const filtered = stored.filter(r => r.id !== rowId);
+            saveStoredHistory(filtered);
+            if (currentActiveHistoryId === rowId) currentActiveHistoryId = null;
+        } catch (e) { console.warn('deleteHistoryRow storage remove error', e); }
+    }
+
+    function incrementSuccessForCurrentHistory() {
+        try {
+            if (!currentActiveHistoryId) return;
+            const stored = getStoredHistory();
+            const idx = stored.findIndex(r => r.id === currentActiveHistoryId);
+            if (idx === -1) return;
+            stored[idx].successCount = (stored[idx].successCount || 0) + 1;
+            saveStoredHistory(stored);
+
+            // update history item UI
+            const item = document.getElementById(currentActiveHistoryId);
+            if (item) {
+                const desc = item.querySelector('.history-desc');
+                if (desc) {
+                    desc.innerHTML = desc.innerHTML.replace(/<strong[^>]*>성공\s*\d+회<\/strong>/, '') + ` <strong style="margin-left:8px; color:#2f9e44;">성공 ${stored[idx].successCount}회</strong>`;
+                }
+            }
+        } catch (e) { console.warn('incrementSuccessForCurrentHistory error', e); }
+    }
+</script>
+
+</body>
+</html>

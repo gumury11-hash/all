@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>낱말 추리 게임</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Pretendard', sans-serif; }
+        .help-trigger-btn { border: 0; border-radius: 999px; padding: 7px 12px; background: linear-gradient(135deg, #50b6ff 0%, #2b8fe9 100%); color: white; font-size: 12px; font-weight: 700; cursor: pointer; }
+        .modal-overlay { display: none; position: fixed; inset: 0; z-index: 1000; align-items: center; justify-content: center; padding: 16px; background: rgba(20, 25, 40, 0.45); }
+        .modal-content { position: relative; width: 100%; max-width: 500px; padding: 20px 18px 18px; border-radius: 18px; background: white; box-shadow: 0 18px 45px rgba(0, 0, 0, 0.2); }
+        .modal-close { position: absolute; top: 10px; right: 12px; padding: 4px 8px; border: 0; background: transparent; color: #64748b; font-size: 22px; cursor: pointer; }
+
+        @media (max-width: 640px) {
+            body { height: 100dvh; min-height: 0; overflow: hidden; }
+            header { flex-shrink: 0; padding: 0.75rem 1rem; }
+            header h1 { font-size: 1.25rem; }
+            main { min-height: 0; padding: 0.75rem; gap: 0.75rem; }
+            #settings-panel { flex-shrink: 0; padding: 1rem; }
+            #stats-panel { flex-shrink: 0; padding: 0.75rem; gap: 0.75rem; }
+            #game-panel { height: auto; min-height: 0; flex: 1 1 0%; }
+            #game-panel > div:first-child { padding: 0.75rem 1rem; }
+            #chat-container { min-height: 0; padding: 1rem; gap: 0.75rem; }
+            #game-controls { flex-shrink: 0; padding: 0.75rem; gap: 0.5rem; }
+            #question-form { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0.5rem; }
+            #question-input, #answer-input { min-width: 0; padding: 0.75rem; font-size: 1rem; }
+            #question-btn, #answer-btn, #give-up-btn { padding: 0.75rem; font-size: 0.875rem; }
+            #answer-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.5rem; }
+            #answer-input { grid-column: 1 / -1; }
+            #answer-btn, #give-up-btn { width: 100%; }
+        }
+
+        @media (max-width: 360px) {
+            #question-btn { padding-inline: 0.5rem; font-size: 0.8rem; }
+            #answer-btn, #give-up-btn { padding-inline: 0.4rem; font-size: 0.8rem; }
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
+
+    <header class="bg-indigo-600 text-white shadow-md py-4 px-6">
+        <div class="max-w-4xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-2">
+            <h1 class="text-2xl font-bold flex items-center gap-2">
+                🧠 낱말 추리 게임
+            </h1>
+            <button id="settings-toggle" class="bg-indigo-700 hover:bg-indigo-800 text-sm font-semibold px-4 py-2 rounded-lg transition shadow-sm">
+                ⚙️ API 키 설정
+            </button>
+        </div>
+    </header>
+
+    <main class="flex-grow max-w-4xl w-full mx-auto p-4 sm:p-6 flex flex-col gap-6">
+
+        <section id="settings-panel" class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 hidden">
+            <div class="flex justify-between items-center gap-3 mb-2">
+                <h2 class="text-lg font-bold text-slate-700">Gemini API 키 설정</h2>
+                <button class="help-trigger-btn" type="button" onclick="openHelpModal()">도움말</button>
+            </div>
+            <p class="text-sm text-slate-500 mb-4">
+                Google Gemini API 키를 등록하면 <a href="https://aistudio.google.com/api-keys" target="_blank" rel="noopener noreferrer" class="text-indigo-600 underline">Google AI Studio</a>에서 등록한 키를 이 게임과 다른 학습 메뉴에서 함께 사용합니다.
+            </p>
+            <div class="flex gap-2">
+                <input type="password" id="api-key-input" placeholder="AIzaSy..." class="flex-grow border border-slate-300 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                <button id="save-key-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded-xl text-sm font-semibold transition">
+                    키 등록
+                </button>
+            </div>
+        </section>
+
+        <div id="helpModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="helpModalTitle">
+            <div class="modal-content">
+                <button class="modal-close" type="button" onclick="closeHelpModal()" aria-label="도움말 닫기">×</button>
+                <h2 id="helpModalTitle" class="text-lg font-bold text-sky-700 mb-3">💡 Gemini API 키 발급 방법</h2>
+                <ol class="pl-5 text-sm leading-relaxed list-decimal space-y-2">
+                    <li><a href="https://aistudio.google.com/api-keys" target="_blank" rel="noopener noreferrer" class="text-indigo-600 underline">Google AI Studio</a>에 접속해 Google 계정으로 로그인합니다.</li>
+                    <li><strong>API 키 만들기</strong>를 선택해 키를 생성합니다.</li>
+                    <li>생성된 키를 복사해 위 입력창에 붙여넣고 <strong>키 등록</strong>을 누릅니다.</li>
+                </ol>
+            </div>
+        </div>
+
+        <section id="stats-panel" class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-col sm:flex-row justify-between items-center gap-4">
+            <div>
+                <span class="text-sm text-slate-500">누적 성공 횟수: <strong id="stat-wins" class="text-indigo-600">0</strong>회</span>
+                <span class="mx-3 text-slate-300">|</span>
+                <span class="text-sm text-slate-500">평균 질문 횟수: <strong id="stat-avg" class="text-indigo-600">0</strong>회</span>
+            </div>
+            <button id="new-game-btn" class="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-3 rounded-xl font-bold shadow transition flex items-center justify-center gap-2">
+                ✨ 새로운 게임 시작
+            </button>
+        </section>
+
+        <section id="game-panel" class="bg-white rounded-2xl shadow-sm border border-slate-200 flex flex-col flex-grow overflow-hidden h-[500px]">
+            <!-- Chat Log Header -->
+            <div class="bg-slate-100 px-6 py-3 border-b border-slate-200 flex justify-between items-center">
+                <span class="font-semibold text-sm text-slate-600">질문 및 대화 기록</span>
+                <span id="question-count" class="text-sm bg-indigo-100 text-indigo-700 px-3 py-1 rounded-full font-bold">질문 횟수: 0회</span>
+            </div>
+
+            <!-- Chat Messages Container -->
+            <div id="chat-container" class="flex-grow p-6 overflow-y-auto flex flex-col gap-4 bg-slate-50/50">
+                <div class="self-center bg-indigo-50 text-indigo-800 p-4 rounded-2xl text-center text-sm max-w-md shadow-sm border border-indigo-100">
+                    👋 환영합니다! "새로운 게임 시작"을 누르면 AI가 치매 예방에 좋은 친숙한 명사 단어를 하나 고릅니다.<br>
+                    <strong>O/X로 답할 수 있는 질문</strong>을 던져서 단어를 추리해 보세요!
+                </div>
+            </div>
+
+            <!-- Input Controls Form -->
+            <div id="game-controls" class="p-4 bg-white border-t border-slate-200 flex flex-col gap-3">
+                <!-- Question Form (O/X Question) -->
+                <form id="question-form" class="flex gap-2">
+                    <input type="text" id="question-input" placeholder="예: 사람이 먹을 수 있는 것인가요?" class="flex-grow border border-slate-300 rounded-xl px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm" disabled>
+                    <button type="submit" id="question-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-xl font-bold transition shadow-sm disabled:opacity-50" disabled>
+                        질문하기 (O/X)
+                    </button>
+                </form>
+
+                <!-- Final Answer Form -->
+                <form id="answer-form" class="flex gap-2">
+                    <input type="text" id="answer-input" placeholder="정답을 아시겠나요? 정답을 입력하세요." class="flex-grow border border-emerald-300 rounded-xl px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-emerald-500 shadow-sm bg-emerald-50/30" disabled>
+                    <button type="submit" id="answer-btn" class="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-3 rounded-xl font-bold transition shadow-sm disabled:opacity-50">
+                        정답 맞추기
+                    </button>
+                    <button type="button" id="give-up-btn" class="bg-slate-500 hover:bg-slate-600 text-white px-5 py-3 rounded-xl font-bold transition shadow-sm disabled:opacity-50" disabled>
+                        포기하고 정답 보기
+                    </button>
+                </form>
+            </div>
+        </section>
+
+    </main>
+
+    <script>
+        // Game State Variables
+        const SHARED_API_KEY_STORAGE = 'gemini_api_key';
+        const USED_WORDS_STORAGE = 'word_quest_used_words';
+        const WORD_POOL_STORAGE = 'word_quest_word_pool';
+        let apiKey = localStorage.getItem(SHARED_API_KEY_STORAGE) || '';
+        let secretWord = '';
+        let questionCount = 0;
+        let gameActive = false;
+        let pendingQuestion = '';
+        let questionRequestInProgress = false;
+        let stats = JSON.parse(localStorage.getItem('game_stats')) || { wins: 0, totalQuestions: 0 };
+
+        function loadUsedWords() {
+            try {
+                const savedWords = JSON.parse(localStorage.getItem(USED_WORDS_STORAGE) || '[]');
+                return Array.isArray(savedWords) ? savedWords : [];
+            } catch (error) {
+                return [];
+            }
+        }
+
+        function normalizeWord(word) {
+            return word.toLocaleLowerCase('ko-KR').replace(/\s+/g, '');
+        }
+
+        function cleanWord(word) {
+            return String(word).replace(/[^가-힣a-zA-Z]/g, '').trim();
+        }
+
+        function loadWordPool() {
+            try {
+                const savedWords = JSON.parse(localStorage.getItem(WORD_POOL_STORAGE) || '[]');
+                return Array.isArray(savedWords) ? savedWords.map(cleanWord).filter(Boolean) : [];
+            } catch (error) {
+                return [];
+            }
+        }
+
+        function parseWordBatch(response) {
+            const text = response.replace(/^```(?:json)?\s*|\s*```$/g, '').trim();
+            try {
+                const parsed = JSON.parse(text);
+                if (Array.isArray(parsed)) return parsed.map(cleanWord).filter(Boolean);
+                if (Array.isArray(parsed.words)) return parsed.words.map(cleanWord).filter(Boolean);
+            } catch (error) {
+                // Fall back to one word per line if the model did not return valid JSON.
+            }
+            return text.split(/[\n,、]+/).map(word => cleanWord(word.replace(/^[-*\d.\s]+/, ''))).filter(Boolean);
+        }
+
+        function uniqueUnusedWords(words, usedWords, existingWords = []) {
+            const excluded = new Set([...usedWords, ...existingWords].map(normalizeWord));
+            return words.filter((word) => {
+                const normalized = normalizeWord(word);
+                if (!normalized || excluded.has(normalized)) return false;
+                excluded.add(normalized);
+                return true;
+            });
+        }
+
+        async function drawNextSecretWord() {
+            const usedWords = loadUsedWords();
+            let wordPool = uniqueUnusedWords(loadWordPool(), usedWords);
+
+            if (wordPool.length === 0) {
+                const systemPrompt = '당신은 단어 추리 게임의 출제자입니다. 일상에서 익숙한 명사 단어를 서로 중복되지 않게 정확히 10개 고르세요. 사용된 단어 목록에 있는 단어는 절대로 포함하지 마세요. 결과는 JSON 문자열 배열로만 답하세요. 예: ["사과", "기차"]';
+                const generatedWords = [];
+
+                for (let attempt = 0; attempt < 3 && generatedWords.length < 10; attempt++) {
+                    const excludedWords = [...usedWords, ...generatedWords];
+                    const prompt = `게임에 사용할 새 단어 10개를 JSON 배열로 출력하세요. 각 항목은 한 단어여야 합니다. 이미 출제했거나 후보로 받은 단어는 포함하지 마세요.\n이미 사용한 단어: ${JSON.stringify(excludedWords)}`;
+                    const response = await callGemini(systemPrompt, prompt);
+                    generatedWords.push(...uniqueUnusedWords(parseWordBatch(response), usedWords, generatedWords));
+                }
+                wordPool = generatedWords;
+            }
+
+            if (wordPool.length === 0) throw new Error('Could not generate unused words.');
+
+            const selectedIndex = Math.floor(Math.random() * wordPool.length);
+            const [selectedWord] = wordPool.splice(selectedIndex, 1);
+            usedWords.push(selectedWord);
+            localStorage.setItem(USED_WORDS_STORAGE, JSON.stringify(usedWords));
+            localStorage.setItem(WORD_POOL_STORAGE, JSON.stringify(wordPool));
+            return selectedWord;
+        }
+
+        // DOM Elements
+        const settingsPanel = document.getElementById('settings-panel');
+        const settingsToggle = document.getElementById('settings-toggle');
+        const apiKeyInput = document.getElementById('api-key-input');
+        const saveKeyBtn = document.getElementById('save-key-btn');
+        const newGameBtn = document.getElementById('new-game-btn');
+        const chatContainer = document.getElementById('chat-container');
+        const questionForm = document.getElementById('question-form');
+        const questionInput = document.getElementById('question-input');
+        const questionBtn = document.getElementById('question-btn');
+        const answerForm = document.getElementById('answer-form');
+        const answerInput = document.getElementById('answer-input');
+        const answerBtn = document.getElementById('answer-btn');
+        const giveUpBtn = document.getElementById('give-up-btn');
+        const questionCountBadge = document.getElementById('question-count');
+        const statWins = document.getElementById('stat-wins');
+        const statAvg = document.getElementById('stat-avg');
+
+        function openHelpModal() {
+            document.getElementById('helpModal').style.display = 'flex';
+        }
+
+        function closeHelpModal() {
+            document.getElementById('helpModal').style.display = 'none';
+        }
+
+        document.getElementById('helpModal').addEventListener('click', (event) => {
+            if (event.target === event.currentTarget) closeHelpModal();
+        });
+
+        // Initialize UI Stats
+        function updateStatsDisplay() {
+            statWins.textContent = stats.wins;
+            const avg = stats.wins > 0 ? (stats.totalQuestions / stats.wins).toFixed(1) : '0';
+            statAvg.textContent = avg;
+        }
+        updateStatsDisplay();
+
+        settingsPanel.classList.toggle('hidden', Boolean(apiKey));
+        apiKeyInput.value = apiKey;
+
+        // Keep the game in sync when another open page updates the shared key.
+        window.addEventListener('storage', (event) => {
+            if (event.key !== SHARED_API_KEY_STORAGE) return;
+            apiKey = event.newValue || '';
+            apiKeyInput.value = apiKey;
+            settingsPanel.classList.toggle('hidden', Boolean(apiKey));
+        });
+
+        settingsToggle.addEventListener('click', () => {
+            settingsPanel.classList.toggle('hidden');
+        });
+
+        saveKeyBtn.addEventListener('click', () => {
+            const key = apiKeyInput.value.trim();
+            if (!key) {
+                alert('API 키를 입력해주세요.');
+                return;
+            }
+            apiKey = key;
+            localStorage.setItem(SHARED_API_KEY_STORAGE, apiKey);
+            settingsPanel.classList.add('hidden');
+            appendSystemMessage('API 키가 등록되었습니다. all.html을 포함한 다른 학습 메뉴에서도 같은 키를 사용합니다.');
+        });
+
+        // Append Message Helper
+        function appendMessage(sender, text, type = 'normal') {
+            const bubble = document.createElement('div');
+            bubble.className = `p-4 rounded-2xl max-w-[85%] text-base shadow-sm ${
+                sender === 'user' 
+                    ? 'bg-indigo-600 text-white self-end rounded-br-none' 
+                    : type === 'success'
+                    ? 'bg-emerald-100 text-emerald-800 self-start border border-emerald-200 font-bold'
+                    : type === 'error'
+                    ? 'bg-rose-100 text-rose-800 self-start border border-rose-200'
+                    : 'bg-white text-slate-700 self-start border border-slate-200'
+            }`;
+            bubble.innerHTML = `<strong>${sender === 'user' ? '나' : '제미나이'}:</strong> ${text}`;
+            chatContainer.appendChild(bubble);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        function appendSystemMessage(text) {
+            const bubble = document.createElement('div');
+            bubble.className = 'self-center bg-slate-200 text-slate-700 px-4 py-2 rounded-xl text-sm text-center my-2';
+            bubble.innerHTML = text;
+            chatContainer.appendChild(bubble);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        function appendRetryMessage(question) {
+            const bubble = document.createElement('div');
+            bubble.className = 'p-4 rounded-2xl max-w-[85%] text-base shadow-sm bg-rose-100 text-rose-800 self-start border border-rose-200';
+
+            const message = document.createElement('p');
+            message.className = 'mb-3';
+            message.textContent = '답변을 가져오지 못했습니다. 질문 횟수에 포함하지 않았습니다.';
+
+            const retryButton = document.createElement('button');
+            retryButton.type = 'button';
+            retryButton.className = 'rounded-lg bg-rose-600 px-3 py-2 text-sm font-semibold text-white hover:bg-rose-700 disabled:opacity-50';
+            retryButton.textContent = '다시 시도';
+            retryButton.addEventListener('click', () => {
+                retryButton.disabled = true;
+                if (pendingQuestion === question) submitQuestion(question, true);
+            });
+
+            bubble.append(message, retryButton);
+            chatContainer.appendChild(bubble);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        // Gemini API Request with Exponential Backoff
+        async function callGemini(systemPrompt, userPrompt, retries = 3, delay = 1000) {
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key=${apiKey}`;
+            const payload = {
+                contents: [{ parts: [{ text: userPrompt }] }],
+                systemInstruction: { parts: [{ text: systemPrompt }] }
+            };
+
+            for (let i = 0; i < retries; i++) {
+                try {
+                    const response = await fetch(url, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                    const result = await response.json();
+                    const text = result?.candidates?.[0]?.content?.parts?.[0]?.text;
+                    if (text) return text.trim();
+                    throw new Error('Invalid response structure');
+                } catch (error) {
+                    if (i === retries - 1) throw error;
+                    await new Promise(res => setTimeout(res, delay));
+                    delay *= 2;
+                }
+            }
+        }
+
+        // Start New Game
+        newGameBtn.addEventListener('click', async () => {
+            if (!apiKey) {
+                alert('먼저 상단의 [API 키 설정] 버튼을 눌러 Gemini API 키를 입력해 주세요.');
+                settingsPanel.classList.remove('hidden');
+                return;
+            }
+
+            newGameBtn.disabled = true;
+            newGameBtn.textContent = '단어 생성 중...';
+            chatContainer.innerHTML = '';
+            questionCount = 0;
+            pendingQuestion = '';
+            questionCountBadge.textContent = '질문 횟수: 0회';
+
+            try {
+                secretWord = await drawNextSecretWord();
+                console.log("Secret Word (Debug):", secretWord);
+
+                gameActive = true;
+                questionInput.disabled = false;
+                questionBtn.disabled = false;
+                answerInput.disabled = false;
+                answerBtn.disabled = false;
+                giveUpBtn.disabled = false;
+
+                appendSystemMessage('🎯 새로운 단어가 준비되었습니다! O/X 질문을 던져보세요.');
+            } catch (err) {
+                console.error(err);
+                appendSystemMessage('⚠️ 단어 생성 중 오류가 발생했습니다. API 키를 확인해주세요.');
+            } finally {
+                newGameBtn.disabled = false;
+                newGameBtn.textContent = '✨ 새로운 게임 시작';
+            }
+        });
+
+        async function submitQuestion(question, isRetry = false) {
+            if (!gameActive || questionRequestInProgress || !question) return;
+
+            questionRequestInProgress = true;
+            pendingQuestion = question;
+            if (!isRetry) {
+                questionInput.value = '';
+                appendMessage('user', question);
+            }
+            questionInput.disabled = true;
+            questionBtn.disabled = true;
+            answerInput.disabled = true;
+            answerBtn.disabled = true;
+            giveUpBtn.disabled = true;
+            newGameBtn.disabled = true;
+            questionBtn.textContent = '판단 중...';
+
+            try {
+                const systemPrompt = `당신은 단어 추리 게임의 O/X 심판입니다. 
+정답 단어는 "${secretWord}" 입니다. 
+사용자의 질문에 대해 오직 "O" 또는 "X" (혹은 "네" 또는 "아니오")로만 답변해야 합니다. 친절한 설명은 덧붙이지 말고 정확하게 O 또는 X 위주로 답하세요.`;
+
+                const answer = await callGemini(systemPrompt, question);
+
+                // Normalize answer to O or X representation
+                let formattedAnswer = answer.toUpperCase().includes('O') || answer.includes('네') || answer.includes('맞') ? 'O (네)' : 'X (아니오)';
+
+                questionCount++;
+                questionCountBadge.textContent = `질문 횟수: ${questionCount}회`;
+                pendingQuestion = '';
+                appendMessage('gemini', formattedAnswer);
+            } catch (err) {
+                console.error(err);
+                appendRetryMessage(question);
+            } finally {
+                questionRequestInProgress = false;
+                questionInput.disabled = !gameActive;
+                questionBtn.disabled = !gameActive;
+                answerInput.disabled = !gameActive;
+                answerBtn.disabled = !gameActive;
+                giveUpBtn.disabled = !gameActive;
+                newGameBtn.disabled = false;
+                questionBtn.textContent = '질문하기 (O/X)';
+            }
+        }
+
+        // Count a question only after Gemini returns a successful answer.
+        questionForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            submitQuestion(questionInput.value.trim());
+        });
+
+        // Give up and reveal the answer
+        giveUpBtn.addEventListener('click', () => {
+            if (!gameActive) return;
+
+            gameActive = false;
+            questionInput.disabled = true;
+            questionBtn.disabled = true;
+            answerInput.disabled = true;
+            answerBtn.disabled = true;
+            giveUpBtn.disabled = true;
+
+            appendMessage('gemini', `정답은 바로 '${secretWord}'였습니다. 다음 게임에서 다시 도전해보세요!`, 'error');
+            appendSystemMessage('게임이 종료되었습니다. 다시 시작하려면 [새로운 게임 시작]을 눌러주세요.');
+        });
+
+        // Handle Final Answer Submission
+        answerForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            if (!gameActive) return;
+
+            const guess = answerInput.value.trim();
+            if (!guess) return;
+
+            answerInput.value = '';
+            appendMessage('user', `정답 도전: "${guess}"`);
+
+            // Check if guess matches secret word (allowing flexible substring containment or exact match)
+            if (guess.includes(secretWord) || secretWord.includes(guess)) {
+                gameActive = false;
+                questionInput.disabled = true;
+                questionBtn.disabled = true;
+                answerInput.disabled = true;
+                answerBtn.disabled = true;
+                giveUpBtn.disabled = true;
+
+                stats.wins++;
+                stats.totalQuestions += questionCount;
+                localStorage.setItem('game_stats', JSON.stringify(stats));
+                updateStatsDisplay();
+
+                appendMessage('gemini', `🎉 축하합니다! 정답은 바로 '${secretWord}'였습니다!<br>총 <strong>${questionCount}번</strong>의 질문 끝에 맞추셨습니다! 대단하십니다!`, 'success');
+                appendSystemMessage('🏆 게임에서 승리하셨습니다. 다시 시작하려면 [새로운 게임 시작]을 눌러주세요.');
+            } else {
+                appendMessage('gemini', `❌ 정답이 아닙니다. 다시 질문하거나 정답을 다시 유추해보세요!`, 'error');
+            }
+        });
+    </script>
+</body>
+</html>

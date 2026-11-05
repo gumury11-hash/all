@@ -1,0 +1,874 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title id="page-title">외국어 단어 퀴즈</title>
+    <style>
+        :root {
+            --bg-color: #fcfbf9;
+            --card-bg: #ffffff;
+            --gold-primary: #c5a059;
+            --gold-light: #fdfaf3;
+            --gold-border: #e6dcbe;
+            --gold-hover: #b08d46;
+            --text-color: #2c2c2c;
+            --text-muted: #666666;
+            --border-color: #e5e5e5;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            position: fixed;
+            touch-action: none;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 12px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-sizing: border-box;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 620px;
+            max-height: 92vh;
+            background: var(--card-bg);
+            padding: 20px 16px;
+            border-radius: 16px;
+            border: 2px solid var(--gold-border);
+            box-shadow: 0 10px 30px rgba(197, 160, 89, 0.1), 0 4px 15px rgba(0, 0, 0, 0.05);
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            touch-action: pan-y;
+        }
+
+        h1 {
+            text-align: center;
+            color: var(--gold-primary);
+            margin-top: 0;
+            margin-bottom: 20px;
+            font-size: 26px;
+            font-weight: 700;
+            letter-spacing: 1.5px;
+            flex-shrink: 0;
+        }
+
+        .section { display: none; }
+        .section.active { display: block; }
+
+        .form-group { margin-bottom: 16px; }
+
+        label {
+            font-weight: 600;
+            font-size: 17px;
+            color: var(--text-color);
+            margin-bottom: 6px;
+            display: block;
+        }
+
+        .api-guide-box {
+            background: var(--gold-light);
+            border: 1px solid var(--gold-border);
+            border-radius: 10px;
+            padding: 14px;
+            margin-bottom: 16px;
+            font-size: 15px;
+            color: var(--text-muted);
+            line-height: 1.5;
+        }
+        .api-guide-box h4 {
+            margin-top: 0;
+            margin-bottom: 8px;
+            color: var(--gold-primary);
+            font-size: 16px;
+        }
+        .api-guide-box ul {
+            padding-left: 18px;
+            margin: 4px 0;
+        }
+        .api-guide-box strong {
+            color: var(--text-color);
+        }
+
+        input[type="text"], input[type="password"], select {
+            width: 100%;
+            padding: 12px 14px;
+            background-color: #faf9f6;
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            font-size: 17px;
+            color: var(--text-color);
+            box-sizing: border-box;
+            outline: none;
+            transition: all 0.3s ease;
+            -webkit-appearance: none;
+        }
+
+        input:focus, select:focus {
+            border-color: var(--gold-primary);
+            background-color: #ffffff;
+            box-shadow: 0 0 8px rgba(197, 160, 89, 0.2);
+        }
+
+        button {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #c5a059 0%, #a37d37 100%);
+            color: #ffffff;
+            border: none;
+            border-radius: 10px;
+            font-size: 17px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 10px;
+            box-shadow: 0 4px 10px rgba(197, 160, 89, 0.2);
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        button:active { transform: scale(0.98); }
+        button:hover {
+            background: linear-gradient(135deg, #d1ac63, #b48a40);
+            box-shadow: 0 6px 15px rgba(197, 160, 89, 0.3);
+            transform: translateY(-1px);
+        }
+
+        .btn-secondary {
+            background: #f3f4f6;
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+        }
+        .btn-secondary:hover {
+            background: #e5e7eb;
+            border-color: var(--gold-primary);
+            box-shadow: none;
+        }
+
+        .btn-tts {
+            background: #e0f2fe;
+            color: #0284c7;
+            border: 1px solid #bae6fd;
+            width: auto;
+            padding: 6px 10px;
+            font-size: 14px;
+            margin-left: 6px;
+            margin-top: 0;
+            display: inline-block;
+            box-shadow: none;
+            vertical-align: middle;
+        }
+        .btn-tts:hover { background: #bae6fd; transform: none; }
+
+        .api-settings-box {
+            margin-top: 24px;
+            padding-top: 16px;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(0, 0, 0, 0.5);
+            justify-content: center;
+            align-items: center;
+            z-index: 999999;
+            padding: 16px;
+            box-sizing: border-box;
+            touch-action: auto;
+        }
+        .modal.show { display: flex !important; }
+        .modal-content {
+            background: var(--card-bg);
+            border: 2px solid var(--gold-border);
+            padding: 24px 20px;
+            border-radius: 16px;
+            width: 100%;
+            max-width: 480px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            max-height: 85vh;
+            overflow-y: auto;
+            box-sizing: border-box;
+        }
+        .modal-content h3 { margin-top: 0; color: var(--gold-primary); font-size: 22px; }
+        .modal-content p, .modal-content li { color: var(--text-muted); font-size: 16px; line-height: 1.5; }
+        .modal-content ul { padding-left: 20px; margin: 10px 0; }
+        .modal-content strong { color: var(--text-color); }
+        .close-btn { background: #ef4444; margin-top: 16px; border: none; font-size: 17px; }
+        .close-btn:hover { background: #dc2626; }
+
+        .history-item-box {
+            background: #faf9f6;
+            border: 1px solid var(--border-color);
+            padding: 12px;
+            border-radius: 10px;
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
+
+        .quiz-header {
+            display: flex;
+            justify-content: space-between;
+            font-size: 17px;
+            color: var(--text-muted);
+            margin-bottom: 14px;
+            font-weight: 600;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 8px;
+        }
+
+        .situation-box {
+            background: var(--gold-light);
+            border-left: 4px solid var(--gold-primary);
+            padding: 14px;
+            border-radius: 0 10px 10px 0;
+            font-size: 18px;
+            line-height: 1.5;
+            margin-bottom: 14px;
+            color: var(--text-color);
+        }
+
+        .options-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 14px;
+        }
+        .option-btn {
+            background: #faf9f6;
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            padding: 14px;
+            border-radius: 10px;
+            text-align: center;
+            font-size: 17px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 0;
+            box-shadow: none;
+            transition: all 0.2s ease;
+            width: 100%;
+        }
+        .option-btn:hover {
+            border-color: var(--gold-primary);
+            background: var(--gold-light);
+            transform: none;
+        }
+
+        .feedback-box {
+            display: none;
+            background: #faf9f6;
+            border: 1px solid var(--gold-border);
+            padding: 14px;
+            border-radius: 10px;
+            margin-bottom: 14px;
+            font-size: 17px;
+            line-height: 1.5;
+        }
+
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid var(--gold-primary);
+            border-radius: 50%;
+            width: 36px;
+            height: 36px;
+            animation: spin 1s linear infinite;
+            margin: 16px auto;
+            display: none;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        .history-list-container {
+            max-height: 220px;
+            overflow-y: auto;
+            margin-top: 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            background: #faf9f6;
+        }
+        .history-row {
+            padding: 12px 14px;
+            border-bottom: 1px solid var(--border-color);
+            font-size: 16px;
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: background 0.2s;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+        }
+        .history-row:last-child { border-bottom: none; }
+        .history-row:hover { background-color: var(--gold-light); color: var(--text-color); }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1 id="main-heading">외국어 단어 퀴즈</h1>
+
+    <!-- 1. API 키 설정 화면 -->
+    <div id="setup-section" class="section active">
+        <div class="api-guide-box">
+            <h4>💡 Gemini API 키 발급 방법</h4>
+            <ul>
+                <li><a href="https://aistudio.google.com/" target="_blank" style="color: var(--gold-primary);">Google AI Studio</a> 접속 및 로그인 🔗 <a href="https://aistudio.google.com/" target="_blank" style="color: var(--gold-primary); font-size: 13px;">[바로가기]</a></li>
+                <li>좌측 메뉴의 <strong>Get API key</strong> 클릭</li>
+                <li><strong>Create API key</strong> 버튼을 눌러 키 생성 후 복사하기</li>
+            </ul>
+        </div>
+
+        <div class="form-group">
+            <label for="api-key-input">Gemini API 키 입력</label>
+            <input type="password" id="api-key-input" placeholder="API 키를 입력하세요 (AIza...)">
+        </div>
+        <button id="save-key-btn">키 저장 및 시작하기</button>
+    </div>
+
+    <!-- 2. 게임 설정 화면 -->
+    <div id="config-section" class="section">
+        <div class="form-group">
+            <label for="target-lang">학습 언어 선택</label>
+            <select id="target-lang">
+                <option value="영어" selected>영어</option>
+                <option value="일본어">일본어</option>
+                <option value="중국어">중국어</option>
+                <option value="스페인어">스페인어</option>
+                <option value="프랑스어">프랑스어</option>
+                <option value="독일어">독일어</option>
+                <option value="베트남어">베트남어</option>
+                <option value="태국어">태국어</option>
+                <option value="러시아어">러시아어</option>
+                <option value="이탈리아어">이탈리아어</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="difficulty">난이도 선택</label>
+            <select id="difficulty">
+                <option value="초급">초급</option>
+                <option value="중급" selected>중급</option>
+                <option value="고급">고급</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="word-type">단어 유형 선택</label>
+            <select id="word-type">
+                <option value="random">🎲 무작위 주제 (랜덤)</option>
+                <option value="공항 및 해외 여행 상황">✈️ 공항 및 해외 여행</option>
+                <option value="식당 주문 및 카페 이용">☕ 식당 주문 및 카페 이용</option>
+                <option value="비즈니스 미팅 및 이메일 표현">💼 비즈니스 및 업무 회화</option>
+                <option value="친구와의 일상 수다 및 감정 표현">🗣️ 일상 대화 및 감정 표현</option>
+                <option value="쇼핑 및 환불/교환 상황">🛍️ 쇼핑 및 환불/교환</option>
+                <option value="호텔 예약 및 체크인/체크아웃">🏨 호텔 및 숙소 이용</option>
+                <option value="길 찾기 및 교통수단 이용">🗺️ 길 찾기 및 교통수단</option>
+                <option value="학교 수업 및 발표 상황">🎓 학교 수업 및 발표</option>
+                <option value="취업 준비 및 면접 질문">💼 취업 준비 및 면접</option>
+                <option value="가족 행사 및 명절 대화">🏡 가족 행사 및 명절</option>
+                <option value="건강, 운동, 병원 방문">🏥 건강 및 병원</option>
+                <option value="취미 생활 및 여가 활동">🎨 취미와 여가</option>
+                <option value="스마트폰, 앱, 디지털 기기">📱 스마트폰 및 디지털</option>
+                <option value="날씨, 계절, 자연환경">🌤️ 날씨와 자연</option>
+                <option value="뉴스, 사회 이슈, 의견 표현">📰 뉴스 및 사회 이슈</option>
+                <option value="영화, 음악, 예술 감상">🎬 영화와 예술</option>
+            </select>
+        </div>
+        <button id="generate-btn">퀴즈 문제 생성하기</button>
+        <button class="btn-secondary" id="show-history-btn">기록 보기</button>
+
+        <div class="api-settings-box" id="api-settings-box" style="display: none;">
+            <div class="api-guide-box" style="margin-bottom: 12px;">
+                <h4>💡 Gemini API 키 발급 방법</h4>
+                <ul>
+                    <li><a href="https://aistudio.google.com/" target="_blank" style="color: var(--gold-primary);">Google AI Studio</a> 접속 후 <strong>Get API key</strong>에서 키 생성 🔗 <a href="https://aistudio.google.com/" target="_blank" style="color: var(--gold-primary); font-size: 13px;">[바로가기]</a></li>
+                </ul>
+            </div>
+            <div class="form-group" style="margin-bottom: 8px;">
+                <label for="config-api-key" style="font-size: 15px; color: var(--text-muted);">API 키 변경/등록</label>
+                <input type="password" id="config-api-key" placeholder="새로운 API 키를 입력하세요">
+            </div>
+            <button class="btn-secondary" id="update-key-btn">API 키 저장</button>
+        </div>
+
+        <div class="loader" id="loader"></div>
+    </div>
+
+    <!-- 3. 퀴즈 풀기 화면 -->
+    <div id="quiz-section" class="section">
+        <div class="quiz-header">
+            <span id="quiz-progress">문제 1 / 10</span>
+            <span id="quiz-score">점수: 0점</span>
+        </div>
+        
+        <div class="situation-box" id="situation-text">뜻 설명 로딩 중...</div>
+        <div class="options-grid" id="options-container"></div>
+
+        <div class="feedback-box" id="feedback-box">
+            <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 4px; margin-bottom: 8px;">
+                <p id="feedback-result" style="font-weight: bold; margin: 0;"></p>
+                <button class="btn-tts" id="tts-word-btn">🔊 단어 듣기</button>
+            </div>
+            <div style="color: #0284c7; font-style: italic; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 4px;">
+                <span id="word-example" style="flex: 1; min-width: 150px;"></span>
+                <button class="btn-tts" id="tts-example-btn">🔊 예문 듣기</button>
+            </div>
+        </div>
+        <button id="next-btn" style="display: none;">다음 문제</button>
+    </div>
+
+    <!-- 4. 결과 및 기록 화면 -->
+    <div id="result-section" class="section">
+        <h2 id="section-title" style="text-align: center; color: var(--gold-primary); font-size: 24px;">퀴즈 완료</h2>
+        <p id="final-score-text" style="text-align: center; font-size: 20px; font-weight: bold; color: var(--text-color);"></p>
+        
+        <div class="history-list-container" id="history-list-box"></div>
+        <button id="reset-config-btn" style="margin-top: 16px;">다시 플레이하기</button>
+    </div>
+</div>
+
+<!-- 기록 상세 확인 모달 -->
+<div class="modal" id="history-detail-modal">
+    <div class="modal-content">
+        <h3>퀴즈 상세 학습 내역</h3>
+        <div id="history-detail-body"></div>
+        <button class="close-btn" id="close-modal-btn">닫기</button>
+    </div>
+</div>
+
+<script>
+    let apiKey = '';
+    try {
+        apiKey = localStorage.getItem('gemini_api_key') || '';
+    } catch (e) {
+        apiKey = '';
+    }
+
+    let quizData = [];
+    let currentIdx = 0;
+    let score = 0;
+    let selectedLang = '영어';
+    let selectedDifficulty = '';
+    let selectedType = '';
+    let currentCorrectWord = '';
+    let currentExampleText = '';
+    let sessionResults = [];
+
+    // DOM이 완전히 로드된 후 이벤트 리스너를 안전하게 부착
+    document.addEventListener('DOMContentLoaded', function() {
+        checkApiKeyStatus();
+
+        // 버튼 이벤트 바인딩
+        document.getElementById('save-key-btn').addEventListener('click', saveApiKey);
+        document.getElementById('update-key-btn').addEventListener('click', updateApiKeyFromConfig);
+        document.getElementById('generate-btn').addEventListener('click', generateQuizQuestions);
+        document.getElementById('show-history-btn').addEventListener('click', showHistorySection);
+        document.getElementById('next-btn').addEventListener('click', nextQuestion);
+        document.getElementById('reset-config-btn').addEventListener('click', resetToConfig);
+        document.getElementById('tts-word-btn').addEventListener('click', playWordPronunciation);
+        document.getElementById('tts-example-btn').addEventListener('click', playExamplePronunciation);
+        document.getElementById('close-modal-btn').addEventListener('click', closeHistoryModal);
+    });
+
+    function checkApiKeyStatus() {
+        const apiSettingsBox = document.getElementById('api-settings-box');
+        if (apiKey && apiKey.trim() !== '') {
+            try {
+                document.getElementById('config-api-key').value = apiKey;
+            } catch (e) {}
+            if (apiSettingsBox) apiSettingsBox.style.display = 'none';
+            switchSection('config-section');
+        } else {
+            if (apiSettingsBox) apiSettingsBox.style.display = 'block';
+            switchSection('setup-section');
+        }
+    }
+
+    function saveApiKey() {
+        const inputEl = document.getElementById('api-key-input');
+        if (!inputEl) {
+            alert('입력 요소를 찾을 수 없습니다.');
+            return;
+        }
+        const keyInput = inputEl.value.trim();
+        if (!keyInput) { 
+            alert('API 키를 입력해주세요.'); 
+            return; 
+        }
+        
+        apiKey = keyInput;
+        try {
+            localStorage.setItem('gemini_api_key', apiKey);
+        } catch (e) {
+            console.warn('localStorage 저장 실패');
+        }
+        
+        checkApiKeyStatus();
+    }
+
+    function updateApiKeyFromConfig() {
+        const inputEl = document.getElementById('config-api-key');
+        if (!inputEl) return;
+        const keyInput = inputEl.value.trim();
+        if (!keyInput) { 
+            alert('API 키를 입력해주세요.'); 
+            return; 
+        }
+        
+        apiKey = keyInput;
+        try {
+            localStorage.setItem('gemini_api_key', apiKey);
+        } catch (e) {}
+        
+        alert('API 키가 저장되었습니다.');
+        checkApiKeyStatus();
+    }
+
+    function openHistoryModal() { 
+        const modal = document.getElementById('history-detail-modal');
+        if (modal) {
+            modal.style.display = 'flex';
+            modal.classList.add('show');
+        }
+    }
+    
+    function closeHistoryModal() { 
+        const modal = document.getElementById('history-detail-modal');
+        if (modal) {
+            modal.style.display = 'none';
+            modal.classList.remove('show');
+        }
+    }
+
+    function switchSection(sectionId) {
+        document.querySelectorAll('.section').forEach(sec => sec.classList.remove('active'));
+        const target = document.getElementById(sectionId);
+        if (target) target.classList.add('active');
+    }
+
+    async function callGeminiAPI(prompt, retries = 5) {
+        const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`;
+        
+        for (let attempt = 1; attempt <= retries; attempt++) {
+            try {
+                const response = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: prompt }] }]
+                    })
+                });
+
+                if (!response.ok) throw new Error('API 호출 실패');
+                const data = await response.json();
+                return data.candidates[0].content.parts[0].text;
+            } catch (err) {
+                if (attempt === retries) throw err;
+                await new Promise(res => setTimeout(res, 1000 * attempt));
+            }
+        }
+    }
+
+    function formatCustomDate(dateObj) {
+        const y = dateObj.getFullYear();
+        const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+        const d = String(dateObj.getDate()).padStart(2, '0');
+        const h = String(dateObj.getHours()).padStart(2, '0');
+        const min = String(dateObj.getMinutes()).padStart(2, '0');
+        const s = String(dateObj.getSeconds()).padStart(2, '0');
+        return `${y}.${m}.${d} ${h}:${min}:${s}`;
+    }
+
+    function getExcludedWordsFromHistory(lang, difficulty, type) {
+        let histories = [];
+        try {
+            histories = JSON.parse(localStorage.getItem('quiz_histories') || '[]');
+        } catch (e) {}
+        
+        const excluded = new Set();
+        histories.forEach(h => {
+            const recordLang = h.lang || '영어';
+            if (recordLang === lang && h.difficulty === difficulty) {
+                if (type === '🎲 무작위 주제 (랜덤)' && h.type === '🎲 무작위 주제 (랜덤)' && h.results) {
+                    h.results.forEach(item => { if (item.word) excluded.add(item.word.toLowerCase()); });
+                } else if (h.type === type && h.results) {
+                    h.results.forEach(item => { if (item.word) excluded.add(item.word.toLowerCase()); });
+                }
+            }
+        });
+        return excluded;
+    }
+
+    async function generateQuizQuestions() {
+        if (!apiKey) {
+            alert('API 키가 등록되어 있지 않습니다. 키를 먼저 등록해주세요.');
+            checkApiKeyStatus();
+            return;
+        }
+
+        selectedLang = document.getElementById('target-lang').value;
+        selectedDifficulty = document.getElementById('difficulty').value;
+        selectedType = document.getElementById('word-type').value;
+        
+        document.getElementById('main-heading').innerText = `${selectedLang} 단어 퀴즈`;
+        document.getElementById('page-title').innerText = `${selectedLang} 단어 퀴즈`;
+        document.getElementById('loader').style.display = 'block';
+
+        let allQuestions = [];
+        let existingWords = getExcludedWordsFromHistory(selectedLang, selectedDifficulty, selectedType);
+        let attempts = 0;
+
+        while (allQuestions.length < 10 && attempts < 5) {
+            attempts++;
+            let neededCount = 10 - allQuestions.length;
+            let excludeArray = Array.from(existingWords);
+            let excludeNote = excludeArray.length > 0 ? ` 단, 다음 단어들은 이미 출제되었으므로 제외해줘: ${excludeArray.join(', ')}` : '';
+
+            const prompt = `학습 언어: ${selectedLang}, 난이도: ${selectedDifficulty}, 단어 주제/유형: ${selectedType}에 맞는 서로 다른 ${selectedLang} 단어 퀴즈 ${neededCount}문제를 생성해줘.${excludeNote}
+반드시 다른 설명 없이 오직 순수 JSON 배열 형식만 출력해줘. (마크다운 백틱 \`\`\`json 등도 절대 포함하지 말고 배열 기호 [ 와 ] 로 시작하고 끝나게 할 것)
+[
+  {
+    "word": "정답 ${selectedLang} 단어",
+    "definition": "이 단어의 의미 및 뉘앙스 설명 (한국어)",
+    "example_en": "해당 단어가 포함된 예문",
+    "example_ko": "예문 번역",
+    "distractors": ["오답1", "오답2", "오답3"]
+  }
+]`;
+
+            try {
+                const responseText = await callGeminiAPI(prompt);
+                let cleanText = responseText.trim();
+                if (cleanText.startsWith('```json')) {
+                    cleanText = cleanText.replace(/^```json/, '').replace(/```$/, '').trim();
+                } else if (cleanText.startsWith('```')) {
+                    cleanText = cleanText.replace(/^```/, '').replace(/```$/, '').trim();
+                }
+                
+                const parsed = JSON.parse(cleanText);
+                for (let q of parsed) {
+                    if (q.word && !existingWords.has(q.word.toLowerCase()) && allQuestions.length < 10) {
+                        existingWords.add(q.word.toLowerCase());
+                        allQuestions.push(q);
+                    }
+                }
+            } catch (e) {
+                console.error('생성 오류:', e);
+            }
+        }
+
+        document.getElementById('loader').style.display = 'none';
+
+        if (allQuestions.length === 0) {
+            alert('문제 생성 실패. API 키가 올바른지 확인해주세요.');
+            return;
+        }
+
+        quizData = allQuestions;
+        currentIdx = 0;
+        score = 0;
+        sessionResults = [];
+        switchSection('quiz-section');
+        loadQuestion();
+    }
+
+    function loadQuestion() {
+        if (currentIdx >= quizData.length) {
+            finishQuiz();
+            return;
+        }
+
+        const q = quizData[currentIdx];
+        currentCorrectWord = q.word;
+        currentExampleText = q.example_en;
+
+        document.getElementById('quiz-progress').innerText = `문제 ${currentIdx + 1} / ${quizData.length}`;
+        document.getElementById('quiz-score').innerText = `점수: ${score}점`;
+        document.getElementById('situation-text').innerText = `${q.definition}`;
+        
+        let options = [...q.distractors, q.word];
+        options.sort(() => Math.random() - 0.5);
+
+        const container = document.getElementById('options-container');
+        container.innerHTML = '';
+        options.forEach(opt => {
+            const btn = document.createElement('button');
+            btn.className = 'option-btn';
+            btn.innerText = opt;
+            btn.addEventListener('click', () => processAnswer(opt, q.word));
+            container.appendChild(btn);
+        });
+
+        container.style.display = 'flex';
+        document.getElementById('feedback-box').style.display = 'none';
+        document.getElementById('next-btn').style.display = 'none';
+    }
+
+    function processAnswer(selected, correct) {
+        const isCorrect = selected.toLowerCase() === correct.toLowerCase();
+        if (isCorrect) {
+            score += Math.round(100 / quizData.length);
+            document.getElementById('feedback-result').innerText = `정답입니다! 👏 ('${correct}')`;
+            document.getElementById('feedback-result').style.color = '#16a34a';
+        } else {
+            document.getElementById('feedback-result').innerText = `틀렸습니다! 정답은 '${correct}' 입니다.`;
+            document.getElementById('feedback-result').style.color = '#dc2626';
+        }
+
+        const q = quizData[currentIdx];
+        document.getElementById('word-example').innerText = `💬 예문: ${q.example_en} (${q.example_ko})`;
+
+        sessionResults.push({
+            word: correct,
+            definition: q.definition,
+            isCorrect: isCorrect,
+            selected: selected
+        });
+
+        document.getElementById('options-container').style.display = 'none';
+        document.getElementById('feedback-box').style.display = 'block';
+        document.getElementById('next-btn').style.display = 'block';
+        document.getElementById('quiz-score').innerText = `점수: ${score}점`;
+    }
+
+    function getLocaleCode(lang) {
+        switch(lang) {
+            case '일본어': return 'ja-JP';
+            case '중국어': return 'zh-CN';
+            case '스페인어': return 'es-ES';
+            case '프랑스어': return 'fr-FR';
+            case '독일어': return 'de-DE';
+            case '베트남어': return 'vi-VN';
+            case '태국어': return 'th-TH';
+            case '러시아어': return 'ru-RU';
+            case '이탈리아어': return 'it-IT';
+            case '영어': default: return 'en-US';
+        }
+    }
+
+    function playWordPronunciation() {
+        if (!currentCorrectWord) return;
+        const utterance = new SpeechSynthesisUtterance(currentCorrectWord);
+        utterance.lang = getLocaleCode(selectedLang);
+        window.speechSynthesis.speak(utterance);
+    }
+
+    function playExamplePronunciation() {
+        if (!currentExampleText) return;
+        const utterance = new SpeechSynthesisUtterance(currentExampleText);
+        utterance.lang = getLocaleCode(selectedLang);
+        window.speechSynthesis.speak(utterance);
+    }
+
+    function nextQuestion() {
+        currentIdx++;
+        loadQuestion();
+    }
+
+    function finishQuiz() {
+        switchSection('result-section');
+        document.getElementById('section-title').innerText = '퀴즈 완료';
+        document.getElementById('final-score-text').innerText = `총 점수: ${score}점`;
+
+        const historyRecord = {
+            date: formatCustomDate(new Date()),
+            lang: selectedLang,
+            difficulty: selectedDifficulty,
+            type: selectedType,
+            score: score,
+            results: sessionResults
+        };
+
+        try {
+            let histories = JSON.parse(localStorage.getItem('quiz_histories') || '[]');
+            histories.unshift(historyRecord);
+            localStorage.setItem('quiz_histories', JSON.stringify(histories));
+        } catch (e) {}
+        
+        renderHistoryList();
+    }
+
+    function showHistorySection() {
+        switchSection('result-section');
+        document.getElementById('section-title').innerText = '기록 보기';
+        document.getElementById('final-score-text').innerText = '';
+        renderHistoryList();
+    }
+
+    function renderHistoryList() {
+        const listBox = document.getElementById('history-list-box');
+        if (!listBox) return;
+        listBox.innerHTML = '';
+        
+        let histories = [];
+        try {
+            histories = JSON.parse(localStorage.getItem('quiz_histories') || '[]');
+        } catch (e) {}
+
+        if (histories.length === 0) {
+            listBox.innerHTML = `<div style="padding: 20px; text-align: center; color: var(--text-muted); font-size: 16px;">저장된 기록이 없습니다.</div>`;
+            return;
+        }
+
+        histories.forEach((h, index) => {
+            const row = document.createElement('div');
+            row.className = 'history-row';
+            const recordLang = h.lang || '영어';
+            row.innerHTML = `
+                <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${h.date} | [${recordLang}] ${h.difficulty} | ${h.type}</span>
+                <b style="color: var(--gold-primary); flex-shrink: 0;">${h.score}점</b>
+            `;
+            row.addEventListener('click', () => showHistoryDetail(index));
+            listBox.appendChild(row);
+        });
+    }
+
+    function showHistoryDetail(historyIndex) {
+        let histories = [];
+        try {
+            histories = JSON.parse(localStorage.getItem('quiz_histories') || '[]');
+        } catch (e) {}
+        
+        const record = histories[historyIndex];
+        if (!record || !record.results) return;
+
+        const detailBody = document.getElementById('history-detail-body');
+        if (!detailBody) return;
+        
+        const recordLang = record.lang || '영어';
+        detailBody.innerHTML = `<p style="font-weight: bold; color: var(--gold-primary); font-size: 16px;">일시: ${record.date} ([${recordLang}] ${record.score}점)</p>`;
+
+        record.results.forEach((item, i) => {
+            const statusColor = item.isCorrect ? '#16a34a' : '#dc2626';
+            const statusText = item.isCorrect ? '정답 ⭕' : `오답 ❌ (선택: ${item.selected})`;
+            
+            const box = document.createElement('div');
+            box.className = 'history-item-box';
+            box.innerHTML = `
+                <div style="font-weight: bold; margin-bottom: 4px; color: var(--text-color); font-size: 16px;">
+                    Q${i+1}. ${item.word} <span style="color: ${statusColor}; float: right;">${statusText}</span>
+                </div>
+                <div style="color: var(--text-muted);">${item.definition}</div>
+            `;
+            detailBody.appendChild(box);
+        });
+
+        openHistoryModal();
+    }
+
+    function resetToConfig() {
+        checkApiKeyStatus();
+    }
+</script>
+
+</body>
+</html>
