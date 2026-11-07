@@ -6,12 +6,12 @@
     <title>카드 수식 대결</title>
     <style>
         :root {
-            --bg-color: #0f172a;
+            --bg-color: #f3f7fc;
             --card-bg: #ffffff;
-            --primary-color: #3b82f6;
-            --accent-color: #f59e0b;
-            --danger-color: #ef4444;
-            --text-color: #f8fafc;
+            --primary-color: #3978d4;
+            --accent-color: #e9a329;
+            --danger-color: #dc4f5b;
+            --text-color: #233247;
         }
 
         * {
@@ -23,9 +23,9 @@
 
         body {
             font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
-            background-color: var(--bg-color);
+            background: linear-gradient(180deg, #f8fbff 0%, var(--bg-color) 100%);
             color: var(--text-color);
-            min-height: 100vh;
+            min-height: 100svh;
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -39,18 +39,20 @@
 
         h1 {
             font-size: 1.5rem;
-            color: #fbbf24;
+            color: #2d67b7;
             margin-bottom: 5px;
         }
 
         .status-board {
             display: flex;
             gap: 20px;
-            background: rgba(255, 255, 255, 0.05);
+            background: #ffffff;
             padding: 10px 20px;
             border-radius: 12px;
             margin-bottom: 15px;
             font-weight: bold;
+            color: #42536b;
+            box-shadow: 0 5px 16px rgba(42, 74, 115, .08);
         }
 
         .game-container {
@@ -62,16 +64,17 @@
         }
 
         .player-zone {
-            background: rgba(255, 255, 255, 0.03);
-            border: 2px solid rgba(255, 255, 255, 0.1);
+            background: rgba(255, 255, 255, .94);
+            border: 1px solid #e1e9f2;
             border-radius: 16px;
             padding: 15px;
             position: relative;
+            box-shadow: 0 8px 24px rgba(42, 74, 115, .07);
         }
 
         .player-zone.active {
-            border-color: var(--primary-color);
-            box-shadow: 0 0 15px rgba(59, 130, 246, 0.3);
+            border-color: #7ba9e8;
+            box-shadow: 0 0 0 3px rgba(57, 120, 212, .10), 0 8px 24px rgba(42, 74, 115, .08);
         }
 
         .player-info {
@@ -88,7 +91,7 @@
             min-height: 90px;
             margin-bottom: 15px;
             padding: 8px;
-            background: rgba(0, 0, 0, 0.2);
+            background: #f1f5fa;
             border-radius: 10px;
         }
 
@@ -98,21 +101,21 @@
             align-items: center;
             gap: 8px;
             padding: 10px;
-            background: rgba(0, 0, 0, 0.4);
+            background: #f5f8fc;
             border-radius: 12px;
         }
 
         .slot {
             width: 65px;
             height: 90px;
-            border: 2px dashed rgba(255, 255, 255, 0.3);
+            border: 2px dashed #c5d1df;
             border-radius: 8px;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
             position: relative;
-            background: rgba(255, 255, 255, 0.02);
+            background: #ffffff;
         }
 
         .slot.operator-slot {
@@ -138,7 +141,7 @@
             color: #1e293b;
             font-weight: bold;
             cursor: pointer;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+            box-shadow: 0 3px 8px rgba(35, 50, 71, .16);
             transition: transform 0.15s;
         }
 
@@ -198,18 +201,18 @@
             text-align: center;
             margin-top: 8px;
             font-size: 1.1rem;
-            color: #fbbf24;
+            color: #2d67b7;
             min-height: 25px;
         }
 
-        .deal-status { text-align: center; color: #cbd5e1; }
+        .deal-status { text-align: center; color: #64748b; }
 
         .deck-picker {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(48px, 1fr));
             gap: 7px;
             padding: 10px;
-            background: rgba(0, 0, 0, 0.2);
+            background: #f1f5fa;
             border-radius: 10px;
         }
 
@@ -271,7 +274,8 @@
             align-items: center;
             justify-content: center;
             padding: 20px;
-            background: rgba(2, 6, 23, .82);
+            background: rgba(28, 43, 62, .48);
+            backdrop-filter: blur(5px);
         }
 
         .result-overlay.visible { display: flex; }
@@ -279,15 +283,51 @@
         .result-dialog {
             width: min(100%, 420px);
             padding: 26px;
-            border: 2px solid #fbbf24;
+            border: 2px solid #f0c66e;
             border-radius: 16px;
-            background: #1e293b;
+            background: #ffffff;
             text-align: center;
-            box-shadow: 0 18px 50px rgba(0,0,0,.45);
+            box-shadow: 0 18px 50px rgba(28, 43, 62, .24);
         }
 
-        .result-dialog h2 { margin-bottom: 12px; color: #fbbf24; }
+        .result-dialog h2 { margin-bottom: 12px; color: #ad7412; }
         .result-dialog p { margin-bottom: 20px; line-height: 1.7; white-space: pre-line; }
+
+        @media (max-width: 480px) and (orientation: portrait) {
+            body {
+                padding: 10px 10px calc(14px + env(safe-area-inset-bottom));
+            }
+
+            header { width: 100%; margin-bottom: 10px; }
+            h1 { font-size: 1.25rem; margin-bottom: 9px; }
+
+            .status-board {
+                width: 100%;
+                justify-content: space-between;
+                gap: 6px;
+                padding: 9px 10px;
+                margin-bottom: 0;
+                font-size: .8rem;
+            }
+
+            .game-container { gap: 10px; }
+            .player-zone { padding: 11px 9px; border-radius: 14px; }
+            .player-info { margin-bottom: 8px; font-size: .92rem; }
+            .hand-container { gap: 6px; min-height: 78px; margin-bottom: 10px; padding: 6px; }
+            .card { width: 52px; height: 74px; padding: 4px; font-size: .9rem; }
+
+            .slots-container {
+                gap: clamp(3px, 1.8vw, 7px);
+                padding: 8px 4px;
+            }
+
+            .slot { width: clamp(44px, 15vw, 58px); height: clamp(64px, 21vw, 80px); }
+            .slot.operator-slot, .card.op-card { width: clamp(36px, 11vw, 44px); height: clamp(36px, 11vw, 44px); }
+            .calc-preview { margin-top: 6px; font-size: 1rem; }
+            .deck-picker { grid-template-columns: repeat(auto-fill, minmax(40px, 1fr)); gap: 6px; padding: 8px; }
+            .deck-card-back { min-height: 58px; }
+            button { min-height: 44px; }
+        }
     </style>
 </head>
 <body>
