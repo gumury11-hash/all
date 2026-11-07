@@ -387,7 +387,209 @@
         </section>
     </div>
 
-    <script>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, onSnapshot, updateDoc, runTransaction } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        const battleParams = new URLSearchParams(window.location.search);
+        const battleContext = {
+            roomId: battleParams.get('roomId'),
+            role: battleParams.get('role') === 'P2' ? 'P2' : 'P1',
+            nickname: battleParams.get('nickname') || ''
+        };
+        let battleDb = null;
+        let battleRoomRef = null;
+        let battleRoom = null;
+        let battleSyncReady = false;
+        let lastShownRound = 0;
+        let localBattleChannel = null;
+        let advanceInProgress = false;
+
+        const emptyBattleState = () => ({ round: 1, scores: { P1: 0, P2: 0 }, submissions: {}, ready: {}, resolvedRound: 0 });
+
+        function applyBattleState(shared) {
+            if (!shared || !battleSyncReady) return;
+            currentRound = shared.round || 1;
+            p1Score = shared.scores?.P1 || 0;
+            p2Score = shared.scores?.P2 || 0;
+            updateScoreBoard();
+
+            const ownSubmission = shared.submissions?.[battleContext.role];
+            const otherRole = battleContext.role === 'P1' ? 'P2' : 'P1';
+            const otherSubmission = shared.submissions?.[otherRole];
+            const displayScores = { ...(shared.scores || { P1: 0, P2: 0 }) };
+            if (ownSubmission && otherSubmission && shared.resolvedRound !== currentRound) {
+                const p1Value = shared.submissions.P1.value;
+                const p2Value = shared.submissions.P2.value;
+                if (p1Value > p2Value) displayScores.P1++;
+                else if (p2Value > p1Value) displayScores.P2++;
+            }
+            p1Score = displayScores.P1;
+            p2Score = displayScores.P2;
+            updateScoreBoard();
+            document.getElementById('p2-status').textContent = otherSubmission ? '제출 완료' : '수식 작성 중';
+            document.getElementById('p2-preview').textContent = otherSubmission ? `상대 결과: ${otherSubmission.value}` : '상대 결과를 기다리는 중';
+
+            if (ownSubmission) {
+                turnResolved = true;
+                document.getElementById('p1-status').textContent = '제출 완료';
+                document.getElementById('p1-preview').textContent = `내 결과: ${ownSubmission.value}`;
+                document.getElementById('deal-status').textContent = otherSubmission ? '두 플레이어가 제출했습니다.' : '제출 완료! 상대가 수식을 완성할 때까지 기다리는 중입니다.';
+                document.getElementById('deck-picker').style.pointerEvents = 'none';
+                document.getElementById('p1-hand').style.pointerEvents = 'none';
+                document.getElementById('p1-slots').style.pointerEvents = 'none';
+            }
+
+            if (ownSubmission && otherSubmission && lastShownRound !== currentRound) {
+                lastShownRound = currentRound;
+                const myValue = ownSubmission.value;
+                const otherValue = otherSubmission.value;
+                const result = myValue > otherValue ? '승리' : myValue < otherValue ? '패배' : '무승부';
+                const finalRound = currentRound === 5;
+                document.getElementById('result-title').textContent = finalRound ? '5라운드 완료' : `${currentRound}라운드 결과: ${result}`;
+                document.getElementById('result-detail').textContent = `내 결과: ${myValue} : 상대 결과: ${otherValue}\n현재 점수: ${p1Score} : ${p2Score}`;
+                document.getElementById('result-action').textContent = finalRound ? '새 게임 시작' : (shared.ready?.[battleContext.role] ? '상대 확인 대기 중' : '다음 라운드');
+                document.getElementById('result-action').disabled = !!shared.ready?.[battleContext.role];
+                const overlay = document.getElementById('result-overlay');
+                overlay.classList.add('visible');
+                overlay.setAttribute('aria-hidden', 'false');
+            }
+
+            if (ownSubmission && otherSubmission && shared.ready?.[battleContext.role]) {
+                document.getElementById('result-action').disabled = true;
+                document.getElementById('result-action').textContent = '상대 확인 대기 중';
+            }
+
+            if (!ownSubmission && currentRound !== Number(document.getElementById('round-num').textContent)) {
+                lastShownRound = 0;
+                startRound();
+            }
+
+            if (battleContext.role === 'P1' && shared.ready?.P1 && shared.ready?.P2) advanceSharedRoundIfReady();
+        }
+
+        async function initializeBattleSync() {
+            if (!battleContext.roomId) return false;
+            const firebaseConfigText = sessionStorage.getItem('card_battle_firebase_config');
+            if (firebaseConfigText) {
+                try {
+                    const firebaseConfig = JSON.parse(firebaseConfigText);
+                    const app = initializeApp(firebaseConfig, `card-battle-${battleContext.roomId}`);
+                    const auth = getAuth(app);
+                    await signInAnonymously(auth);
+                    battleDb = getFirestore(app);
+                    const appId = sessionStorage.getItem('card_battle_app_id') || '1v1-game-app-default';
+                    battleRoomRef = doc(battleDb, 'artifacts', appId, 'public', 'data', 'game_rooms', battleContext.roomId);
+                    const roomSnapshot = await getDoc(battleRoomRef);
+                    if (!roomSnapshot.exists()) throw new Error('Match room not found');
+                    battleRoom = roomSnapshot.data();
+                    if (!battleRoom.cardBattle) {
+                        await updateDoc(battleRoomRef, { cardBattle: emptyBattleState() });
+                    }
+                    battleSyncReady = true;
+                    onSnapshot(battleRoomRef, snapshot => {
+                        if (!snapshot.exists()) return;
+                        battleRoom = snapshot.data();
+                        applyBattleState(battleRoom.cardBattle || emptyBattleState());
+                    }, error => console.error('Card battle sync failed:', error));
+                    return true;
+                } catch (error) {
+                    console.error('Firebase card battle setup failed:', error);
+                    alert('온라인 게임 연결에 실패했습니다. 로비에서 다시 입장해 주세요.');
+                    window.location.href = './multi_hub.html';
+                    return false;
+                }
+            }
+
+            battleRoom = JSON.parse(localStorage.getItem('arena_rooms') || '{}')[battleContext.roomId];
+            if (!battleRoom) {
+                alert('대전 방 정보를 찾을 수 없습니다. 로비에서 다시 입장해 주세요.');
+                window.location.href = './multi_hub.html';
+                return false;
+            }
+            if (!battleRoom.cardBattle) battleRoom.cardBattle = emptyBattleState();
+            battleSyncReady = true;
+            if ('BroadcastChannel' in window) {
+                localBattleChannel = new BroadcastChannel('duel_arena_sync_channel');
+                localBattleChannel.onmessage = event => {
+                    if (event.data?.type === 'ROOM_UPDATED' && event.data.payload?.id === battleContext.roomId) {
+                        battleRoom = event.data.payload;
+                        applyBattleState(battleRoom.cardBattle || emptyBattleState());
+                    }
+                };
+            }
+            window.addEventListener('storage', event => {
+                if (event.key !== 'arena_rooms') return;
+                const rooms = JSON.parse(event.newValue || '{}');
+                if (rooms[battleContext.roomId]) {
+                    battleRoom = rooms[battleContext.roomId];
+                    applyBattleState(battleRoom.cardBattle || emptyBattleState());
+                }
+            });
+            return true;
+        }
+
+        async function updateSharedBattle(patch) {
+            if (battleDb && battleRoomRef) {
+                await updateDoc(battleRoomRef, patch);
+                return;
+            }
+            const rooms = JSON.parse(localStorage.getItem('arena_rooms') || '{}');
+            const room = rooms[battleContext.roomId];
+            if (!room) throw new Error('Match room not found');
+            const shared = { ...(room.cardBattle || emptyBattleState()) };
+            for (const [key, value] of Object.entries(patch)) {
+                const parts = key.split('.');
+                let target = shared;
+                for (const part of parts.slice(0, -1)) target = target[part] = { ...(target[part] || {}) };
+                target[parts[parts.length - 1]] = value;
+            }
+            room.cardBattle = shared;
+            rooms[battleContext.roomId] = room;
+            localStorage.setItem('arena_rooms', JSON.stringify(rooms));
+            battleRoom = room;
+            localBattleChannel?.postMessage({ type: 'ROOM_UPDATED', payload: room });
+            applyBattleState(shared);
+        }
+
+        async function advanceSharedRoundIfReady() {
+            if (battleContext.role !== 'P1' || advanceInProgress) return;
+            advanceInProgress = true;
+            try {
+                if (battleDb && battleRoomRef) {
+                    await runTransaction(battleDb, async transaction => {
+                        const snapshot = await transaction.get(battleRoomRef);
+                        const room = snapshot.data();
+                        const shared = room?.cardBattle;
+                        if (!shared?.submissions?.P1 || !shared?.submissions?.P2 || !shared.ready?.P1 || !shared.ready?.P2) return;
+                        if (shared.round < 5) {
+                            const scores = { ...(shared.scores || { P1: 0, P2: 0 }) };
+                            if (shared.submissions.P1.value > shared.submissions.P2.value) scores.P1++;
+                            else if (shared.submissions.P2.value > shared.submissions.P1.value) scores.P2++;
+                            transaction.update(battleRoomRef, { cardBattle: { round: shared.round + 1, scores, submissions: {}, ready: {}, resolvedRound: shared.round } });
+                        } else {
+                            transaction.update(battleRoomRef, { cardBattle: emptyBattleState() });
+                        }
+                    });
+                } else {
+                    const shared = battleRoom?.cardBattle;
+                    if (shared?.submissions?.P1 && shared?.submissions?.P2 && shared.ready?.P1 && shared.ready?.P2) {
+                        if (shared.round < 5) {
+                            const scores = { ...(shared.scores || { P1: 0, P2: 0 }) };
+                            if (shared.submissions.P1.value > shared.submissions.P2.value) scores.P1++;
+                            else if (shared.submissions.P2.value > shared.submissions.P1.value) scores.P2++;
+                            await updateSharedBattle({ 'round': shared.round + 1, 'scores': scores, 'submissions': {}, 'ready': {}, 'resolvedRound': shared.round });
+                        } else await updateSharedBattle({ 'round': 1, 'scores': { P1: 0, P2: 0 }, 'submissions': {}, 'ready': {}, 'resolvedRound': 0 });
+                    }
+                }
+            } catch (error) {
+                console.error('Could not advance card battle round:', error);
+            } finally {
+                advanceInProgress = false;
+            }
+        }
+
         const SUITS = ['♠', '♥', '♦', '♣'];
         const OPERATORS = ['+', '-', '*', '/', '√', '^2'];
         
@@ -460,6 +662,9 @@
             bonusDrawn = false;
             pickPhase = 'number';
             turnResolved = false;
+            document.getElementById('deck-picker').style.pointerEvents = 'auto';
+            document.getElementById('p1-hand').style.pointerEvents = 'auto';
+            document.getElementById('p1-slots').style.pointerEvents = 'auto';
 
             renderHand();
             renderDeckPicker();
@@ -747,6 +952,22 @@
             const p1Res = calculateExpression(p1Slots);
             if (p1Res === null) return;
             turnResolved = true;
+            if (battleContext.roomId && battleSyncReady) {
+                const nums = p1Slots.filter((_, index) => index % 2 === 0).map(slot => slot.card.val);
+                const ops = [p1Slots[1].card.val, p1Slots[3].card.val];
+                const expression = `${nums[0]} ${ops[0]} ${nums[1]} ${ops[1]} ${nums[2]}`;
+                document.getElementById('p1-status').textContent = '제출 완료';
+                document.getElementById('deal-status').textContent = '제출 완료! 상대가 수식을 완성할 때까지 기다리는 중입니다.';
+                document.getElementById('deck-picker').style.pointerEvents = 'none';
+                updateSharedBattle({ [`submissions.${battleContext.role}`]: { value: p1Res, expression } })
+                    .catch(error => {
+                        turnResolved = false;
+                        document.getElementById('deck-picker').style.pointerEvents = 'auto';
+                        document.getElementById('deal-status').textContent = '제출에 실패했습니다. 네트워크 연결을 확인하고 다시 시도하세요.';
+                        console.error('Card battle submission failed:', error);
+                    });
+                return;
+            }
             const p2Res = runAI();
 
             document.getElementById('p2-preview').textContent = `계산 결과: ${p2Res}`;
@@ -774,6 +995,17 @@
         }
 
         function confirmResult() {
+            if (battleContext.roomId && battleSyncReady) {
+                const shared = battleRoom?.cardBattle || emptyBattleState();
+                if (shared.ready?.[battleContext.role]) return;
+                document.getElementById('result-action').disabled = true;
+                document.getElementById('result-action').textContent = '상대 확인 대기 중';
+                updateSharedBattle({ [`ready.${battleContext.role}`]: true }).then(advanceSharedRoundIfReady).catch(error => {
+                    document.getElementById('result-action').disabled = false;
+                    console.error('Could not confirm card battle result:', error);
+                });
+                return;
+            }
             if (currentRound === 5) {
                 startNewMatch();
                 return;
@@ -805,8 +1037,24 @@
             document.getElementById('p2-score').textContent = p2Score;
         }
 
-        // 게임 자동 시작
-        startNewMatch();
+        window.confirmResult = confirmResult;
+
+        async function startGame() {
+            if (battleContext.roomId) {
+                const connected = await initializeBattleSync();
+                if (!connected) return;
+                document.querySelector('#p2-zone h3').textContent = '상대 플레이어';
+                document.querySelector('#p1-zone h3').textContent = `${battleContext.nickname || '나'} (${battleContext.role})`;
+                document.querySelector('h1').textContent = '수식 카드 온라인 대전';
+                document.querySelector('.status-board').children[1].childNodes[0].textContent = 'P1 점수: ';
+                document.querySelector('.status-board').children[2].childNodes[0].textContent = 'P2 점수: ';
+                document.getElementById('p2-status').textContent = '수식 작성 중';
+            }
+            startNewMatch();
+            if (battleContext.roomId) applyBattleState(battleRoom.cardBattle || emptyBattleState());
+        }
+
+        startGame();
     </script>
 </body>
 </html>
