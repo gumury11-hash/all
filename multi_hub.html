@@ -1,0 +1,1845 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>1v1 Real-Time Multiplayer Arena</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Canvas Confetti for Victories -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Plus Jakarta Sans', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#eef2ff',
+                            100: '#e0e7ff',
+                            500: '#6366f1',
+                            600: '#4f46e5',
+                            700: '#4338ca',
+                            900: '#312e81',
+                        },
+                        neon: {
+                            cyan: '#06b6d4',
+                            magenta: '#ec4899',
+                            emerald: '#10b981',
+                            amber: '#f59e0b'
+                        }
+                    },
+                    animation: {
+                        'pulse-glow': 'pulseGlow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'float': 'float 3s ease-in-out infinite',
+                    },
+                    keyframes: {
+                        pulseGlow: {
+                            '0%, 100%': { opacity: 1, boxShadow: '0 0 15px rgba(99, 102, 241, 0.5)' },
+                            '50%': { opacity: 0.7, boxShadow: '0 0 5px rgba(99, 102, 241, 0.2)' },
+                        },
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0px)' },
+                            '50%': { transform: 'translateY(-6px)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            background: radial-gradient(circle at 50% 0%, #1e1b4b 0%, #0f172a 60%, #020617 100%);
+            color: #f8fafc;
+            min-height: 100vh;
+        }
+
+        /* Custom Scrollbars */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.6);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(99, 102, 241, 0.4);
+            border-radius: 9999px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(99, 102, 241, 0.8);
+        }
+
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.75);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .glass-card {
+            background: rgba(30, 41, 59, 0.6);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .glass-card:hover {
+            border-color: rgba(99, 102, 241, 0.4);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 0 15px rgba(99, 102, 241, 0.2);
+        }
+
+        /* Gomoku / Board Styling */
+        .board-grid {
+            display: grid;
+            gap: 1px;
+            background-color: #334155;
+            border: 2px solid #475569;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+        }
+        .board-cell {
+            background-color: #0f172a;
+            position: relative;
+            cursor: pointer;
+            transition: background-color 0.15s ease;
+        }
+        .board-cell:hover:not(.occupied) {
+            background-color: rgba(99, 102, 241, 0.2);
+        }
+        .math-select { width: 100%; min-width: 0; padding: .75rem .25rem; border-radius: .75rem; border: 1px solid #475569; background: #0f172a; color: #f8fafc; text-align: center; font-weight: 800; }
+    </style>
+</head>
+<body class="font-sans antialiased selection:bg-brand-500 selection:text-white flex flex-col min-h-screen">
+
+    <!-- Top Navigation Header -->
+    <header class="glass-panel sticky top-0 z-40 w-full border-b border-slate-800 px-4 py-3">
+        <div class="max-w-7xl mx-auto flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 to-neon-cyan flex items-center justify-center text-white shadow-lg shadow-brand-500/30">
+                    <i class="fa-solid fa-gamepad text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="font-extrabold text-lg tracking-tight bg-gradient-to-r from-white via-slate-200 to-slate-400 bg-clip-text text-transparent">
+                        DUEL ARENA <span class="text-xs px-2 py-0.5 rounded-full bg-brand-500/20 text-brand-300 font-semibold border border-brand-500/30">1v1 ONLINE</span>
+                    </h1>
+                    <p class="text-xs text-slate-400">실시간 1대1 오목 & 틱택토 대전 매칭</p>
+                </div>
+            </div>
+
+            <!-- Profile Info Header (Visible after login) -->
+            <div id="headerProfile" class="hidden items-center gap-3 bg-slate-900/60 px-3 py-1.5 rounded-full border border-slate-800">
+                <div class="w-8 h-8 rounded-full bg-slate-800 border border-brand-500/40 flex items-center justify-center font-bold text-xs text-brand-400" id="headerAvatar">
+                    ?
+                </div>
+                <div class="flex flex-col">
+                    <span id="headerNickname" class="text-xs font-bold text-slate-200">닉네임</span>
+                    <span id="connectionBadge" class="text-[10px] text-emerald-400 flex items-center gap-1">
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> 온라인
+                    </span>
+                </div>
+                <button id="btnChangeNickname" title="닉네임 변경" class="ml-2 text-slate-400 hover:text-white text-xs p-1 transition-colors">
+                    <i class="fa-solid fa-right-from-bracket"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="flex-grow max-w-7xl w-full mx-auto p-4 md:p-6 flex flex-col justify-center items-center">
+
+        <!-- ================= STAGE 1: NICKNAME ENTRY ================= -->
+        <section id="stageNickname" class="w-full max-w-md my-auto">
+            <div class="glass-panel p-8 rounded-2xl shadow-2xl border border-slate-700/50 text-center relative overflow-hidden">
+                <div class="absolute -top-12 -left-12 w-32 h-32 bg-brand-500/10 rounded-full blur-2xl"></div>
+                <div class="absolute -bottom-12 -right-12 w-32 h-32 bg-neon-cyan/10 rounded-full blur-2xl"></div>
+
+                <div class="mb-6 inline-flex p-4 rounded-2xl bg-slate-900/80 border border-slate-700/80 shadow-inner">
+                    <i class="fa-solid fa-user-astronaut text-4xl text-brand-400 animate-float"></i>
+                </div>
+
+                <h2 class="text-2xl font-bold text-white mb-2">플레이어 닉네임 설정</h2>
+                <p class="text-sm text-slate-400 mb-6">대전에서 사용할 고유 닉네임을 입력하세요.<br><span class="text-xs text-slate-500">실시간으로 중복 검사를 진행합니다.</span></p>
+
+                <form id="formNickname" onsubmit="event.preventDefault(); proceedToLobby();" class="space-y-4">
+                    <div class="relative">
+                        <input type="text" id="inputNickname" maxlength="12" placeholder="닉네임 입력 (2~12자)"
+                            class="w-full px-4 py-3.5 bg-slate-900/90 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent transition-all pr-10 text-center font-semibold text-lg"
+                            autocomplete="off">
+                        <div id="nicknameStatusIcon" class="absolute right-3.5 top-1/2 -translate-y-1/2 hidden">
+                            <!-- Populated dynamically: check mark or spinner/cross -->
+                        </div>
+                    </div>
+
+                    <!-- Validation Feedback Text -->
+                    <div id="nicknameFeedback" class="text-xs min-h-[20px] font-medium text-slate-400 transition-all">
+                        닉네임을 입력해주세요.
+                    </div>
+
+                    <button type="submit" id="btnEnterLobby" disabled
+                        class="w-full py-3.5 px-6 rounded-xl font-bold text-white bg-slate-800 border border-slate-700 opacity-50 cursor-not-allowed transition-all duration-300 shadow-lg flex items-center justify-center gap-2">
+                        <span>로비 입장하기</span>
+                        <i class="fa-solid fa-arrow-right"></i>
+                    </button>
+                </form>
+            </div>
+        </section>
+
+        <!-- ================= STAGE 2: LOBBY & ROOM MANAGEMENT ================= -->
+        <section id="stageLobby" class="w-full max-w-5xl hidden flex-col gap-6">
+            <!-- Top Controls / Stats Banner -->
+            <div class="glass-panel p-5 rounded-2xl flex flex-col md:flex-row items-center justify-between gap-4">
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 rounded-xl bg-slate-800 border border-brand-500/30 flex items-center justify-center text-xl font-bold text-brand-400 shadow-inner" id="lobbyAvatar">
+                        ?
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <h3 class="text-xl font-bold text-white" id="lobbyNickname">Player</h3>
+                            <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">대기 중</span>
+                        </div>
+                        <p class="text-xs text-slate-400 mt-0.5">방을 생성하거나 상대방의 방에 참가하여 대전을 시작하세요.</p>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-3 w-full md:w-auto">
+                    <button id="btnOpenCreateModal" onclick="showCreateRoomModal()" class="flex-1 md:flex-none px-5 py-3 rounded-xl bg-gradient-to-r from-brand-600 to-brand-500 hover:from-brand-500 hover:to-brand-400 text-white font-bold shadow-lg shadow-brand-500/25 transition-all flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-plus"></i>
+                        <span>방 만들기</span>
+                    </button>
+                    <button onclick="refreshRoomsManual()" class="px-3.5 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 hover:text-white transition-all" title="새로고침">
+                        <i class="fa-solid fa-rotate text-sm"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Room List Section -->
+            <div class="space-y-4">
+                <div class="flex items-center justify-between">
+                    <h4 class="text-lg font-bold text-white flex items-center gap-2">
+                        <i class="fa-solid fa-list-check text-brand-400"></i>
+                        <span>대기 중인 매칭 목록</span>
+                        <span id="roomCountBadge" class="ml-2 px-2 py-0.5 rounded-md bg-slate-800 text-slate-400 text-xs font-bold">0</span>
+                    </h4>
+                    <span class="text-xs text-slate-400 flex items-center gap-1.5">
+                        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+                        실시간 업데이트 중
+                    </span>
+                </div>
+
+                <!-- Rooms Grid -->
+                <div id="roomListGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <!-- Empty State Placeholder -->
+                    <div id="emptyRoomState" class="col-span-full glass-panel p-12 rounded-2xl text-center space-y-3">
+                        <div class="w-16 h-16 rounded-full bg-slate-800/80 mx-auto flex items-center justify-center text-slate-500 text-2xl">
+                            <i class="fa-solid fa-ghost"></i>
+                        </div>
+                        <h5 class="text-base font-bold text-slate-300">개설된 방이 없습니다</h5>
+                        <p class="text-xs text-slate-400 max-w-sm mx-auto">새로운 방을 만들어 도전자를 기다리거나 잠시 대기해보세요.</p>
+                        <button onclick="showCreateRoomModal()" class="mt-2 px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-brand-400 border border-slate-700 text-xs font-semibold transition-all">
+                            지금 방 만들기
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= STAGE 3: REAL-TIME 1v1 GAME ARENA ================= -->
+        <section id="stageGame" class="w-full max-w-4xl hidden flex-col items-center gap-4">
+            
+            <!-- Game Top Status Header -->
+            <div class="w-full glass-panel p-4 rounded-2xl flex items-center justify-between border border-slate-700/60 shadow-xl">
+                <!-- Player 1 (Host) Card -->
+                <div id="p1Card" class="flex items-center gap-3 p-2 rounded-xl transition-all border border-transparent">
+                    <div class="relative">
+                        <div class="w-12 h-12 rounded-xl bg-brand-900/60 border-2 border-brand-500 flex items-center justify-center font-extrabold text-brand-300 text-lg shadow-lg">
+                            <i class="fa-solid fa-xmark text-2xl"></i>
+                        </div>
+                        <span class="absolute -bottom-1 -right-1 px-1.5 py-0.5 rounded bg-brand-600 text-[10px] font-black text-white">P1</span>
+                    </div>
+                    <div class="flex flex-col">
+                        <span id="p1Name" class="font-bold text-sm text-white max-w-[100px] truncate">방장</span>
+                        <span id="p1Role" class="text-[11px] text-brand-400 font-semibold">흑돌 (X)</span>
+                    </div>
+                </div>
+
+                <!-- Match Center Status & Timer -->
+                <div class="flex flex-col items-center justify-center px-4 py-1 text-center">
+                    <div id="gameStatusTag" class="px-3 py-1 rounded-full text-xs font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20 mb-1 flex items-center gap-1.5">
+                        <i class="fa-solid fa-spinner animate-spin"></i>
+                        <span>상대방 대기 중</span>
+                    </div>
+
+                    <!-- Turn Timer Bar -->
+                    <div class="flex items-center gap-2">
+                        <i class="fa-regular fa-clock text-xs text-slate-400"></i>
+                        <span id="timerText" class="font-mono text-xl font-extrabold text-white">30</span>
+                        <span class="text-xs text-slate-400">초</span>
+                    </div>
+                </div>
+
+                <!-- Player 2 (Challenger) Card -->
+                <div id="p2Card" class="flex items-center gap-3 p-2 rounded-xl transition-all border border-transparent flex-row-reverse text-right">
+                    <div class="relative">
+                        <div class="w-12 h-12 rounded-xl bg-neon-cyan/10 border-2 border-neon-cyan flex items-center justify-center font-extrabold text-neon-cyan text-lg shadow-lg">
+                            <i class="fa-regular fa-circle text-xl"></i>
+                        </div>
+                        <span class="absolute -bottom-1 -left-1 px-1.5 py-0.5 rounded bg-neon-cyan text-[10px] font-black text-slate-900">P2</span>
+                    </div>
+                    <div class="flex flex-col">
+                        <span id="p2Name" class="font-bold text-sm text-slate-400 max-w-[100px] truncate">대기 중...</span>
+                        <span id="p2Role" class="text-[11px] text-neon-cyan font-semibold">백돌 (O)</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Game Control Bar (Mode Indicator & Leave Button) -->
+            <div class="w-full flex items-center justify-between px-2 text-xs text-slate-400">
+                <div class="flex items-center gap-2">
+                    <span class="font-semibold text-slate-300">게임 모드:</span>
+                    <span id="gameModeDisplay" class="px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700 font-medium">오목 (5-in-a-row)</span>
+                </div>
+                <button onclick="confirmLeaveRoom()" class="text-rose-400 hover:text-rose-300 hover:underline flex items-center gap-1 font-semibold transition-colors">
+                    <i class="fa-solid fa-door-open"></i> 방 나가기
+                </button>
+                <button id="btnDeleteCurrentRoom" onclick="deleteCurrentRoom()" class="hidden text-rose-300 hover:text-rose-200 flex items-center gap-1 font-bold transition-colors">
+                    <i class="fa-solid fa-trash-can"></i> 방 삭제
+                </button>
+            </div>
+
+            <!-- Board Frame Container -->
+            <div class="relative w-full flex justify-center items-center my-2">
+                <!-- Overlay message for waiting/finished states -->
+                <div id="boardOverlay" class="absolute inset-0 z-20 bg-slate-950/80 backdrop-blur-md rounded-2xl flex flex-col items-center justify-center gap-4 p-6 text-center transition-all">
+                    <div id="boardOverlayIcon" class="w-16 h-16 rounded-2xl bg-brand-500/20 text-brand-400 border border-brand-500/40 flex items-center justify-center text-3xl animate-bounce">
+                        <i class="fa-solid fa-hourglass-half"></i>
+                    </div>
+                    <div>
+                        <h3 id="boardOverlayTitle" class="text-xl font-bold text-white">도전자를 기다리는 중...</h3>
+                        <p id="boardOverlaySubtitle" class="text-xs text-slate-400 mt-1 max-w-xs">다른 플레이어가 로비에서 이 방에 참여하면 즉시 대전이 시작됩니다.</p>
+                    </div>
+
+                    <!-- Overlay Action Buttons -->
+                    <div id="boardOverlayActions" class="flex items-center gap-3 mt-2 hidden">
+                        <button id="btnRematch" onclick="requestRematch()" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-brand-600 to-brand-500 hover:from-brand-500 hover:to-brand-400 text-white font-bold text-sm shadow-lg transition-all flex items-center gap-2">
+                            <i class="fa-solid fa-rotate-right"></i> 다시 하기
+                        </button>
+                        <button onclick="leaveRoom()" class="px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 font-bold text-sm transition-all">
+                            로비로 돌아가기
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Interactive Game Board -->
+                <div class="glass-panel p-3 md:p-5 rounded-2xl border border-slate-700/80 shadow-2xl">
+                    <div id="gameBoard" class="board-grid rounded-lg overflow-hidden mx-auto">
+                        <!-- Dynamic cells injected via JS -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Reaction Chat & Interaction -->
+            <section id="mathGameView" class="hidden w-full glass-panel p-5 md:p-7 rounded-2xl border border-amber-500/30 shadow-2xl">
+                <div class="flex flex-wrap items-center justify-between gap-3 mb-5">
+                    <div><h2 class="text-xl font-extrabold text-amber-300">수식 카드 대전</h2><p class="text-xs text-slate-400 mt-1">각자 식을 완성해 제출하면 두 결과가 공개됩니다.</p></div>
+                    <div class="text-sm font-bold text-slate-200"><span id="mathRound">1</span>/5 라운드 · <span id="mathScore">0 : 0</span></div>
+                    <div class="flex items-center gap-2"><button id="btnDeleteMathRoom" onclick="deleteCurrentRoom()" class="hidden px-3 py-2 rounded-lg bg-rose-500/15 text-rose-200 border border-rose-500/30 text-xs font-bold">방 삭제</button><button onclick="confirmLeaveRoom()" class="px-3 py-2 rounded-lg bg-slate-800 text-slate-300 border border-slate-700 text-xs font-bold">방 나가기</button></div>
+                </div>
+                <div class="grid grid-cols-2 gap-3 mb-5 text-center">
+                    <div class="rounded-xl bg-slate-900/70 p-3"><div id="mathP1Name" class="text-xs text-slate-400">P1</div><div id="mathP1Result" class="text-lg font-black text-brand-300">미제출</div></div>
+                    <div class="rounded-xl bg-slate-900/70 p-3"><div id="mathP2Name" class="text-xs text-slate-400">P2</div><div id="mathP2Result" class="text-lg font-black text-cyan-300">미제출</div></div>
+                </div>
+                <div id="mathWaiting" class="hidden mb-4 rounded-lg bg-emerald-500/10 border border-emerald-500/30 p-3 text-center text-sm text-emerald-300">제출 완료! 상대가 식을 완성할 때까지 기다리는 중입니다.</div>
+                <div id="mathBuilder" class="space-y-4">
+                    <p class="text-center text-sm text-slate-300">내 숫자 카드: <span id="mathNumberCards" class="font-black text-amber-300"></span></p>
+                    <div class="grid grid-cols-5 gap-2 items-center text-center">
+                        <select id="mathN0" class="math-select"></select><select id="mathOp0" class="math-select"><option>+</option><option>-</option><option>*</option><option>/</option></select>
+                        <select id="mathN1" class="math-select"></select><select id="mathOp1" class="math-select"><option>+</option><option>-</option><option>*</option><option>/</option></select><select id="mathN2" class="math-select"></select>
+                    </div>
+                    <div class="text-center"><div id="mathPreview" class="text-2xl font-black text-amber-300 mb-3">결과: -</div><button id="btnSubmitMath" onclick="submitMathExpression()" class="px-6 py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold">식 제출</button></div>
+                </div>
+                <div id="mathRoundActions" class="hidden text-center mt-4"><p id="mathRoundMessage" class="text-sm font-bold mb-3"></p><button id="btnNextMathRound" onclick="advanceMathRound()" class="px-5 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-bold">다음 라운드</button></div>
+            </section>
+
+            <!-- Quick Reaction Chat & Interaction -->
+            <div class="w-full glass-panel p-3 rounded-xl flex items-center justify-between gap-2 border border-slate-800">
+                <span class="text-xs text-slate-400 font-semibold px-2 shrink-0">빠른 반응:</span>
+                <div class="flex items-center gap-2 overflow-x-auto py-1 max-w-full">
+                    <button onclick="sendQuickEmote('🔥')" class="px-2.5 py-1 rounded-lg bg-slate-800/80 hover:bg-slate-700 border border-slate-700 text-sm transition-all">🔥 승부다!</button>
+                    <button onclick="sendQuickEmote('👏')" class="px-2.5 py-1 rounded-lg bg-slate-800/80 hover:bg-slate-700 border border-slate-700 text-sm transition-all">👏 나이스</button>
+                    <button onclick="sendQuickEmote('🤔')" class="px-2.5 py-1 rounded-lg bg-slate-800/80 hover:bg-slate-700 border border-slate-700 text-sm transition-all">🤔 장고 중...</button>
+                    <button onclick="sendQuickEmote('😅')" class="px-2.5 py-1 rounded-lg bg-slate-800/80 hover:bg-slate-700 border border-slate-700 text-sm transition-all">😅 실수했네</button>
+                    <button onclick="sendQuickEmote('👍')" class="px-2.5 py-1 rounded-lg bg-slate-800/80 hover:bg-slate-700 border border-slate-700 text-sm transition-all">👍 좋은 수</button>
+                </div>
+            </div>
+
+            <!-- Chat / Reaction Toast Overlay -->
+            <div id="chatToast" class="fixed bottom-6 right-6 z-50 transform translate-y-10 opacity-0 transition-all duration-300 pointer-events-none">
+                <div class="glass-panel px-4 py-3 rounded-2xl shadow-2xl border border-brand-500/40 flex items-center gap-3">
+                    <span id="chatToastAvatar" class="w-8 h-8 rounded-full bg-brand-600 text-white flex items-center justify-center font-bold text-xs">P</span>
+                    <div>
+                        <p id="chatToastUser" class="text-[10px] font-bold text-slate-400">Player</p>
+                        <p id="chatToastText" class="text-sm font-bold text-white">메시지 내용</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="w-full border-t border-slate-800/80 py-4 text-center text-xs text-slate-500 mt-auto">
+        <p>1v1 Online Multiplayer Matching Hub &copy; 2026. Powered by Broadcast Sync & Real-time State.</p>
+    </footer>
+
+    <div id="nicknameTakeoverModal" class="fixed inset-0 z-[70] hidden items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4">
+        <div class="glass-panel w-full max-w-sm rounded-2xl border border-amber-500/40 p-6 text-center shadow-2xl">
+            <div class="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-amber-500/15 text-amber-300"><i class="fa-solid fa-user-shield text-xl"></i></div>
+            <h2 class="text-lg font-extrabold text-white">같은 닉네임 접속 요청</h2>
+            <p id="nicknameTakeoverMessage" class="my-3 text-sm text-slate-300"></p>
+            <p id="nicknameTakeoverCountdown" class="mb-4 text-xs font-bold text-amber-300"></p>
+            <button onclick="blockNicknameTakeover()" class="w-full rounded-xl bg-rose-600 px-4 py-3 font-bold text-white hover:bg-rose-500">5초 내 접속 차단</button>
+        </div>
+    </div>
+
+    <!-- Modal: Create Room Dialog -->
+    <div id="modalCreateRoom" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm hidden items-center justify-center p-4">
+        <div class="glass-panel w-full max-w-md p-6 rounded-2xl border border-slate-700 shadow-2xl space-y-5 animate-float-none">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-square-plus text-brand-400"></i>
+                    <span>새 게임 방 개설</span>
+                </h3>
+                <button onclick="hideCreateRoomModal()" class="text-slate-400 hover:text-white p-1">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 mb-1.5">방 제목</label>
+                    <input type="text" id="inputRoomTitle" maxlength="25" placeholder="예: 즐겁게 오목 한판 하실 분!"
+                        class="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-brand-500">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 mb-1.5">게임 종류</label>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <label class="flex flex-col p-3 rounded-xl border border-slate-700 bg-slate-900/60 cursor-pointer hover:border-brand-500/50 has-[:checked]:border-brand-500 has-[:checked]:bg-brand-500/10">
+                            <div class="flex items-center justify-between mb-1">
+                                <span class="font-bold text-sm text-white">오목 (Gomoku)</span>
+                                <input type="radio" name="gameType" value="gomoku" checked class="accent-brand-500">
+                            </div>
+                            <span class="text-[11px] text-slate-400">10x10 판, 5목 완성 승리</span>
+                        </label>
+
+                        <label class="flex flex-col p-3 rounded-xl border border-slate-700 bg-slate-900/60 cursor-pointer hover:border-brand-500/50 has-[:checked]:border-brand-500 has-[:checked]:bg-brand-500/10">
+                            <div class="flex items-center justify-between mb-1">
+                                <span class="font-bold text-sm text-white">틱택토 (Classic)</span>
+                                <input type="radio" name="gameType" value="tictactoe" class="accent-brand-500">
+                            </div>
+                            <span class="text-[11px] text-slate-400">3x3 판, 빠른 3목 승리</span>
+                        </label>
+                        <label class="flex flex-col p-3 rounded-xl border border-slate-700 bg-slate-900/60 cursor-pointer hover:border-brand-500/50 has-[:checked]:border-brand-500 has-[:checked]:bg-brand-500/10">
+                            <div class="flex items-center justify-between mb-1"><span class="font-bold text-sm text-white">수식 카드 대전</span><input type="radio" name="gameType" value="mathcards" class="accent-brand-500"></div>
+                            <span class="text-[11px] text-slate-400">각자 식을 만들어 5라운드 대결</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-3 pt-2">
+                <button onclick="hideCreateRoomModal()" class="flex-1 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-sm border border-slate-700">
+                    취소
+                </button>
+                <button onclick="submitCreateRoom()" class="flex-1 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-bold text-sm shadow-lg shadow-brand-500/30">
+                    방 생성하기
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= JAVASCRIPT LOGIC & STATE MANAGEMENT ================= -->
+    <script type="module">
+        // Firebase SDK imports (Using standard Web JS v11)
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { 
+            getFirestore, collection, doc, setDoc, getDoc, getDocs, 
+            onSnapshot, updateDoc, deleteDoc, serverTimestamp 
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Global State
+        const state = {
+            userId: null,
+            sessionId: (crypto.randomUUID ? crypto.randomUUID() : `session_${Date.now()}_${Math.random().toString(36).slice(2)}`),
+            nickname: '',
+            currentRoomId: null,
+            isHost: false,
+            roomData: null,
+            timerInterval: null,
+            timerSeconds: 30,
+            activeNicknames: new Set(),
+            nicknameOwners: {},
+            pendingNicknameRequests: new Map(),
+            activeNicknameRequestId: null,
+            nicknameRequestTimer: null,
+            isConnecting: false,
+            hasRegisteredNickname: false,
+            nicknameSessionCheckAfter: 0,
+            rooms: {},
+            useFirebase: false,
+            broadcastChannel: null
+        };
+
+        const appId = typeof __app_id !== 'undefined' ? __app_id : '1v1-game-app-default';
+        let db = null;
+        let auth = null;
+
+        // BroadcastChannel initialization for instant multi-tab sync fallback
+        if ('BroadcastChannel' in window) {
+            state.broadcastChannel = new BroadcastChannel('duel_arena_sync_channel');
+            state.broadcastChannel.onmessage = (event) => {
+                handleBroadcastMessage(event.data);
+            };
+        }
+
+        // Initialize Firebase if config provided, otherwise fallback to local sync
+        async function initBackend() {
+            try {
+                if (typeof __firebase_config !== 'undefined' && __firebase_config) {
+                    const firebaseConfig = JSON.parse(__firebase_config);
+                    const app = initializeApp(firebaseConfig);
+                    db = getFirestore(app);
+                    auth = getAuth(app);
+
+                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                        await signInWithCustomToken(auth, __initial_auth_token);
+                    } else {
+                        await signInAnonymously(auth);
+                    }
+
+                    state.userId = auth.currentUser ? auth.currentUser.uid : crypto.randomUUID();
+                    state.useFirebase = true;
+                    console.log("Firebase initialized successfully. User ID:", state.userId);
+                    subscribeFirebaseData();
+                } else {
+                    throw new Error("No Firebase config found. Using BroadcastChannel local emulation.");
+                }
+            } catch (err) {
+                console.warn("Falling back to local multi-tab emulation mode:", err.message);
+                state.userId = 'usr_' + Math.random().toString(36).substring(2, 9);
+                state.useFirebase = false;
+                initLocalEmulation();
+            }
+        }
+
+        // --- LOCAL BROADCAST CHANNEL EMULATION STORAGE ---
+        function broadcastStateUpdate(type, payload) {
+            if (state.broadcastChannel) {
+                state.broadcastChannel.postMessage({ type, payload, senderId: state.sessionId || state.userId });
+            }
+            // Sync with LocalStorage for persistent cross-tab store
+            if (type === 'SYNC_ROOMS') {
+                localStorage.setItem('arena_rooms', JSON.stringify(payload));
+            } else if (type === 'SYNC_NICKNAMES') {
+                localStorage.setItem('arena_nicknames', JSON.stringify(Array.from(payload)));
+            }
+        }
+
+        function handleBroadcastMessage(msg) {
+            if (!msg || msg.senderId === state.sessionId || msg.senderId === state.userId) return;
+
+            if (msg.type === 'PING_NICKNAME_CHECK') {
+                // Another tab is querying active nicknames
+                announceMyPresence();
+            } else if (msg.type === 'PONG_NICKNAME') {
+                if (msg.payload.nickname) {
+                    const normalized = msg.payload.nickname.toLowerCase();
+                    state.activeNicknames.add(normalized);
+                    state.nicknameOwners[normalized] = { sessionId: msg.payload.sessionId || msg.senderId, userId: msg.payload.userId || msg.senderId };
+                    validateNicknameInput();
+                }
+            } else if (msg.type === 'NICKNAME_TAKEOVER_REQUEST' && msg.payload.targetId === state.sessionId && state.nickname.toLowerCase() === msg.payload.nickname.toLowerCase()) {
+                showNicknameTakeoverRequest(msg.payload);
+            } else if (msg.type === 'NICKNAME_TAKEOVER_BLOCKED' && msg.payload.requesterId === state.sessionId && msg.payload.requestId) {
+                window.dispatchEvent(new CustomEvent(`nickname-request-${msg.payload.requestId}`, { detail: 'blocked' }));
+            } else if (msg.type === 'NICKNAME_TAKEOVER_GRANTED' && msg.payload.targetId === state.sessionId) {
+                handleSessionReplacement();
+            } else if (msg.type === 'SYNC_NICKNAMES') {
+                state.activeNicknames = new Set(msg.payload || []);
+                validateNicknameInput();
+            } else if (msg.type === 'SYNC_ROOMS') {
+                state.rooms = msg.payload || {};
+                renderRoomList();
+                checkActiveRoomSync();
+            } else if (msg.type === 'ROOM_UPDATED') {
+                const updatedRoom = msg.payload;
+                if (updatedRoom) {
+                    state.rooms[updatedRoom.id] = updatedRoom;
+                    renderRoomList();
+                    if (state.currentRoomId === updatedRoom.id) {
+                        state.roomData = updatedRoom;
+                        renderGameState();
+                    }
+                }
+            } else if (msg.type === 'CHAT_EMOTE') {
+                if (msg.payload.roomId === state.currentRoomId) {
+                    showChatToast(msg.payload.user, msg.payload.text);
+                }
+            }
+        }
+
+        function initLocalEmulation() {
+            // Load saved state from LocalStorage
+            try {
+                const savedNicknames = JSON.parse(localStorage.getItem('arena_nicknames') || '[]');
+                state.activeNicknames = new Set(savedNicknames);
+                const savedRooms = JSON.parse(localStorage.getItem('arena_rooms') || '{}');
+                state.rooms = savedRooms;
+            } catch (e) {
+                state.rooms = {};
+            }
+
+            renderRoomList();
+            announceMyPresence();
+            
+            // Poll local storage periodically for multi-tab fallback
+            setInterval(() => {
+                const currentStoredRooms = JSON.parse(localStorage.getItem('arena_rooms') || '{}');
+                if (JSON.stringify(currentStoredRooms) !== JSON.stringify(state.rooms)) {
+                    state.rooms = currentStoredRooms;
+                    renderRoomList();
+                    checkActiveRoomSync();
+                }
+            }, 1000);
+        }
+
+        function announceMyPresence() {
+            if (state.nickname) {
+                state.activeNicknames.add(state.nickname.toLowerCase());
+                broadcastStateUpdate('PONG_NICKNAME', { nickname: state.nickname, userId: state.userId, sessionId: state.sessionId });
+            } else {
+                broadcastStateUpdate('PING_NICKNAME_CHECK', {});
+            }
+        }
+
+        // --- FIREBASE FIRESTORE REALTIME SYNC ---
+        function subscribeFirebaseData() {
+            if (!state.useFirebase || !db) return;
+
+            // 1. Subscribe to Active Nicknames
+            const nickCol = collection(db, 'artifacts', appId, 'public', 'data', 'nicknames');
+            onSnapshot(nickCol, (snapshot) => {
+                const nicks = new Set();
+                const owners = {};
+                let ownNicknamePresent = false;
+                snapshot.forEach(doc => {
+                    if (doc.data().nickname) {
+                        const normalized = doc.data().nickname.toLowerCase();
+                        nicks.add(normalized);
+                        owners[normalized] = { sessionId: doc.id, userId: doc.data().userId || doc.id };
+                        if (doc.id === state.sessionId) ownNicknamePresent = true;
+                    }
+                });
+                state.activeNicknames = nicks;
+                state.nicknameOwners = owners;
+                validateNicknameInput();
+                if (state.hasRegisteredNickname && Date.now() >= state.nicknameSessionCheckAfter && state.nickname && !ownNicknamePresent) handleSessionReplacement();
+            }, (error) => console.error("Nicknames snapshot error:", error));
+
+            const requestCol = collection(db, 'artifacts', appId, 'public', 'data', 'nickname_requests');
+            onSnapshot(requestCol, (snapshot) => {
+                snapshot.forEach(requestDoc => {
+                    const request = requestDoc.data();
+                    if (request.targetSessionId === state.sessionId && request.status === 'pending' && request.expiresAt > Date.now()) {
+                        showNicknameTakeoverRequest({ ...request, requestId: requestDoc.id });
+                    }
+                });
+            }, (error) => console.error('Nickname request snapshot error:', error));
+
+            // 2. Subscribe to Public Game Rooms
+            const roomsCol = collection(db, 'artifacts', appId, 'public', 'data', 'game_rooms');
+            onSnapshot(roomsCol, (snapshot) => {
+                const roomsObj = {};
+                snapshot.forEach(doc => {
+                    roomsObj[doc.id] = doc.data();
+                });
+                state.rooms = roomsObj;
+                renderRoomList();
+                checkActiveRoomSync();
+            }, (error) => console.error("Rooms snapshot error:", error));
+        }
+
+        // Ensure current active room state updates in real-time
+        function checkActiveRoomSync() {
+            if (state.currentRoomId && state.rooms[state.currentRoomId]) {
+                const freshRoom = state.rooms[state.currentRoomId];
+                if (freshRoom.status === 'deleted') {
+                    state.currentRoomId = null;
+                    state.roomData = null;
+                    state.isHost = false;
+                    resetTurnTimer();
+                    switchStage('stageLobby');
+                    showChatToast('방 삭제', '방장이 이 방을 삭제했습니다.');
+                    return;
+                }
+                state.roomData = freshRoom;
+                renderGameState();
+            } else if (state.currentRoomId) {
+                state.currentRoomId = null;
+                state.roomData = null;
+                state.isHost = false;
+                resetTurnTimer();
+                switchStage('stageLobby');
+                showChatToast('방 삭제', '현재 방이 삭제되었습니다.');
+            }
+        }
+
+        // ================= STAGE 1 LOGIC: NICKNAME VALIDATION =================
+        const inputNickname = document.getElementById('inputNickname');
+        const nicknameFeedback = document.getElementById('nicknameFeedback');
+        const nicknameStatusIcon = document.getElementById('nicknameStatusIcon');
+        const btnEnterLobby = document.getElementById('btnEnterLobby');
+
+        inputNickname.addEventListener('input', validateNicknameInput);
+
+        function validateNicknameInput() {
+            const val = inputNickname.value.trim();
+            nicknameStatusIcon.classList.remove('hidden');
+
+            if (val.length < 2) {
+                nicknameFeedback.textContent = "닉네임은 2자 이상이어야 합니다.";
+                nicknameFeedback.className = "text-xs min-h-[20px] font-medium text-amber-400";
+                nicknameStatusIcon.innerHTML = `<i class="fa-solid fa-triangle-exclamation text-amber-400"></i>`;
+                btnEnterLobby.disabled = true;
+                btnEnterLobby.className = "w-full py-3.5 px-6 rounded-xl font-bold text-white bg-slate-800 border border-slate-700 opacity-50 cursor-not-allowed transition-all shadow-lg flex items-center justify-center gap-2";
+                return false;
+            }
+
+            // Check if nickname already exists in active set
+            const isTaken = state.activeNicknames.has(val.toLowerCase());
+            if (isTaken && val.toLowerCase() !== state.nickname.toLowerCase()) {
+                nicknameFeedback.textContent = '이미 접속 중입니다. 접속 요청 후 5초 동안 차단되지 않으면 재접속합니다.';
+                nicknameFeedback.className = 'text-xs min-h-[20px] font-medium text-amber-300';
+                nicknameStatusIcon.innerHTML = `<i class="fa-solid fa-user-clock text-amber-300"></i>`;
+                btnEnterLobby.disabled = false;
+                btnEnterLobby.className = 'w-full py-3.5 px-6 rounded-xl font-bold text-white bg-gradient-to-r from-amber-600 to-amber-500 border border-amber-400/30 cursor-pointer transition-all shadow-lg flex items-center justify-center gap-2';
+                return true;
+                nicknameFeedback.textContent = "이미 사용 중인 닉네임입니다. 다른 닉네임을 입력하세요.";
+                nicknameFeedback.className = "text-xs min-h-[20px] font-medium text-rose-400";
+                nicknameStatusIcon.innerHTML = `<i class="fa-solid fa-circle-xmark text-rose-400"></i>`;
+                btnEnterLobby.disabled = true;
+                btnEnterLobby.className = "w-full py-3.5 px-6 rounded-xl font-bold text-white bg-slate-800 border border-slate-700 opacity-50 cursor-not-allowed transition-all shadow-lg flex items-center justify-center gap-2";
+                return false;
+            }
+
+            // Valid & Unique
+            nicknameFeedback.textContent = "사용 가능한 닉네임입니다!";
+            nicknameFeedback.className = "text-xs min-h-[20px] font-medium text-emerald-400";
+            nicknameStatusIcon.innerHTML = `<i class="fa-solid fa-circle-check text-emerald-400"></i>`;
+            btnEnterLobby.disabled = false;
+            btnEnterLobby.className = "w-full py-3.5 px-6 rounded-xl font-bold text-white bg-gradient-to-r from-brand-600 to-brand-500 hover:from-brand-500 hover:to-brand-400 border border-brand-400/30 cursor-pointer transition-all shadow-lg shadow-brand-500/25 flex items-center justify-center gap-2";
+            return true;
+        }
+
+        function showNicknameTakeoverRequest(request) {
+            if (!request.requestId || state.pendingNicknameRequests.has(request.requestId)) return;
+            state.pendingNicknameRequests.set(request.requestId, request);
+            state.activeNicknameRequestId = request.requestId;
+            const modal = document.getElementById('nicknameTakeoverModal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            document.getElementById('nicknameTakeoverMessage').textContent = `${request.nickname || state.nickname} 닉네임으로 새 접속 요청이 왔습니다.`;
+            const countdown = document.getElementById('nicknameTakeoverCountdown');
+            const updateCountdown = () => {
+                const remaining = Math.max(0, Math.ceil(((request.expiresAt || Date.now() + 5000) - Date.now()) / 1000));
+                countdown.textContent = remaining ? `${remaining}초 안에 차단할 수 있습니다` : '재접속 처리 중';
+                if (!remaining) {
+                    clearInterval(state.nicknameRequestTimer);
+                    state.nicknameRequestTimer = null;
+                    state.pendingNicknameRequests.delete(request.requestId);
+                    modal.classList.add('hidden');
+                    modal.classList.remove('flex');
+                }
+            };
+            if (state.nicknameRequestTimer) clearInterval(state.nicknameRequestTimer);
+            updateCountdown();
+            state.nicknameRequestTimer = setInterval(updateCountdown, 200);
+        }
+
+        window.blockNicknameTakeover = async function() {
+            const requestId = state.activeNicknameRequestId;
+            const request = requestId && state.pendingNicknameRequests.get(requestId);
+            if (!request || Date.now() > request.expiresAt) return;
+            if (state.useFirebase && db) {
+                await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'nickname_requests', requestId), { status: 'blocked', blockedAt: serverTimestamp() });
+            } else {
+                broadcastStateUpdate('NICKNAME_TAKEOVER_BLOCKED', { requestId, requesterId: request.requesterId });
+            }
+            state.pendingNicknameRequests.delete(requestId);
+            if (state.nicknameRequestTimer) clearInterval(state.nicknameRequestTimer);
+            document.getElementById('nicknameTakeoverModal').classList.add('hidden');
+            document.getElementById('nicknameTakeoverModal').classList.remove('flex');
+            showChatToast('접속 차단', '재접속 요청을 차단했습니다.');
+        };
+
+        async function cleanupRoomsForUser(userIds, nickname = '') {
+            const ids = new Set(userIds);
+            const matchesNickname = room => nickname && [room.hostName, room.guestName].some(name => name?.toLowerCase() === nickname.toLowerCase());
+            const resetRoom = room => ({ ...room, guestId: null, guestName: null, status: 'waiting', boardState: Array((room.boardSize || 0) ** 2).fill(null), mathRound: 1, mathScores: { P1: 0, P2: 0 }, mathSubmissions: { P1: null, P2: null }, winner: null, currentTurn: 'P1', rematchRequest: { P1: false, P2: false }, updatedAt: Date.now() });
+            if (state.useFirebase && db) {
+                const roomCol = collection(db, 'artifacts', appId, 'public', 'data', 'game_rooms');
+                const snapshot = await getDocs(roomCol);
+                const updates = [];
+                snapshot.forEach(roomDoc => {
+                    const room = roomDoc.data();
+                    if (ids.has(room.hostId) || (!ids.size && matchesNickname(room) && room.hostName?.toLowerCase() === nickname.toLowerCase())) updates.push(deleteDoc(roomDoc.ref));
+                    else if (ids.has(room.guestId) || (!ids.size && matchesNickname(room) && room.guestName?.toLowerCase() === nickname.toLowerCase())) updates.push(updateDoc(roomDoc.ref, { ...resetRoom(room), updatedAt: serverTimestamp() }));
+                });
+                await Promise.all(updates);
+                return;
+            }
+            const rooms = JSON.parse(localStorage.getItem('arena_rooms') || '{}');
+            for (const [id, room] of Object.entries(rooms)) {
+                if (ids.has(room.hostId)) delete rooms[id];
+                else if (ids.has(room.guestId)) rooms[id] = resetRoom(room);
+            }
+            state.rooms = rooms;
+            localStorage.setItem('arena_rooms', JSON.stringify(rooms));
+            broadcastStateUpdate('SYNC_ROOMS', rooms);
+        }
+
+        async function requestNicknameTakeover(nickname) {
+            const normalized = nickname.toLowerCase();
+            if (state.useFirebase && db) {
+                const nickCol = collection(db, 'artifacts', appId, 'public', 'data', 'nicknames');
+                const ownersSnapshot = await getDocs(nickCol);
+                const ownerIds = [];
+                const ownerUserIds = new Set();
+                ownersSnapshot.forEach(owner => {
+                    if (owner.data().nickname?.toLowerCase() === normalized && owner.id !== state.sessionId) {
+                        ownerIds.push(owner.id);
+                        ownerUserIds.add(owner.data().userId || owner.id);
+                    }
+                });
+                if (!ownerIds.length) return true;
+                const reqRef = doc(collection(db, 'artifacts', appId, 'public', 'data', 'nickname_requests'));
+                await setDoc(reqRef, { requesterId: state.sessionId, targetSessionId: ownerIds[0], nickname, status: 'pending', expiresAt: Date.now() + 5000, createdAt: serverTimestamp() });
+                await new Promise(resolve => setTimeout(resolve, 5000));
+                const requestSnapshot = await getDoc(reqRef);
+                if (requestSnapshot.exists() && requestSnapshot.data().status === 'blocked') {
+                    await deleteDoc(reqRef);
+                    return false;
+                }
+                if (requestSnapshot.exists()) await updateDoc(reqRef, { status: 'approved' });
+                await cleanupRoomsForUser([...ownerUserIds], nickname);
+                const latestOwners = await getDocs(nickCol);
+                const removals = [];
+                latestOwners.forEach(owner => {
+                    if (owner.data().nickname?.toLowerCase() === normalized && owner.id !== state.sessionId) removals.push(deleteDoc(owner.ref));
+                });
+                await Promise.all(removals);
+                if (requestSnapshot.exists()) await deleteDoc(reqRef);
+                return true;
+            }
+
+            broadcastStateUpdate('PING_NICKNAME_CHECK', {});
+            await new Promise(resolve => setTimeout(resolve, 300));
+            const owner = state.nicknameOwners[normalized];
+            if (!owner) {
+                return true;
+            }
+            const requestId = `req_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+            const expiresAt = Date.now() + 5000;
+            let blocked = false;
+            const eventName = `nickname-request-${requestId}`;
+            const onDecision = event => { blocked = event.detail === 'blocked'; };
+            window.addEventListener(eventName, onDecision);
+            broadcastStateUpdate('NICKNAME_TAKEOVER_REQUEST', { requestId, targetId: owner.sessionId, requesterId: state.sessionId, nickname, expiresAt });
+            await new Promise(resolve => setTimeout(resolve, 5000));
+            window.removeEventListener(eventName, onDecision);
+            if (blocked) return false;
+            broadcastStateUpdate('NICKNAME_TAKEOVER_GRANTED', { targetId: owner.sessionId, nickname });
+            await cleanupRoomsForUser([owner.userId], nickname);
+            state.activeNicknames.delete(normalized);
+            localStorage.setItem('arena_nicknames', JSON.stringify(Array.from(state.activeNicknames)));
+            broadcastStateUpdate('SYNC_NICKNAMES', Array.from(state.activeNicknames));
+            return true;
+        }
+
+        function handleSessionReplacement() {
+            if (!state.hasRegisteredNickname) return;
+            state.hasRegisteredNickname = false;
+            state.nickname = '';
+            state.currentRoomId = null;
+            state.roomData = null;
+            state.isHost = false;
+            resetTurnTimer();
+            document.getElementById('headerProfile').classList.add('hidden');
+            document.getElementById('headerProfile').classList.remove('flex');
+            switchStage('stageNickname');
+            nicknameFeedback.textContent = '같은 닉네임으로 재접속하여 기존 세션이 종료되었습니다.';
+            nicknameFeedback.className = 'text-xs min-h-[20px] font-medium text-amber-300';
+        }
+
+        window.proceedToLobby = async function() {
+            if (state.isConnecting || !validateNicknameInput()) return;
+
+            const nick = inputNickname.value.trim();
+            state.isConnecting = true;
+            btnEnterLobby.disabled = true;
+            const isTaken = state.activeNicknames.has(nick.toLowerCase()) && nick.toLowerCase() !== state.nickname.toLowerCase();
+            if (isTaken) {
+                nicknameFeedback.textContent = '기존 접속자에게 5초 동안 접속 차단 기회를 알리는 중…';
+                let allowed = false;
+                try { allowed = await requestNicknameTakeover(nick); }
+                catch (error) {
+                    console.error('Nickname reconnect request failed:', error);
+                    state.isConnecting = false;
+                    validateNicknameInput();
+                    nicknameFeedback.textContent = '접속 요청을 처리하지 못했습니다. 잠시 후 다시 시도하세요.';
+                    return;
+                }
+                if (!allowed) {
+                    state.isConnecting = false;
+                    validateNicknameInput();
+                    nicknameFeedback.textContent = '기존 접속자가 재접속을 차단했습니다.';
+                    nicknameFeedback.className = 'text-xs min-h-[20px] font-medium text-rose-400';
+                    return;
+                }
+            }
+            state.nickname = nick;
+
+            // Register nickname to backend
+            if (state.useFirebase && db) {
+                try {
+                    const nickRef = doc(db, 'artifacts', appId, 'public', 'data', 'nicknames', state.sessionId);
+                    await setDoc(nickRef, { nickname: nick, userId: state.userId, sessionId: state.sessionId, createdAt: serverTimestamp() });
+                } catch (e) {
+                    console.error("Error registering nickname:", e);
+                }
+            } else {
+                state.activeNicknames.add(nick.toLowerCase());
+                localStorage.setItem('arena_nicknames', JSON.stringify(Array.from(state.activeNicknames)));
+                announceMyPresence();
+            }
+            state.hasRegisteredNickname = true;
+            state.nicknameSessionCheckAfter = Date.now() + 3000;
+            state.isConnecting = false;
+
+            // Update Header Profile
+            document.getElementById('headerNickname').textContent = nick;
+            document.getElementById('headerAvatar').textContent = nick.charAt(0).toUpperCase();
+            document.getElementById('lobbyNickname').textContent = nick;
+            document.getElementById('lobbyAvatar').textContent = nick.charAt(0).toUpperCase();
+            document.getElementById('headerProfile').classList.remove('hidden');
+            document.getElementById('headerProfile').classList.add('flex');
+
+            // Transition UI Stage
+            switchStage('stageLobby');
+        };
+
+        // Reset nickname / Logout
+        document.getElementById('btnChangeNickname').addEventListener('click', async () => {
+            if (state.currentRoomId) {
+                if (!confirm("현재 입장 중인 방에서 나가고 닉네임을 변경하시겠습니까?")) return;
+                leaveRoom();
+            }
+            if (state.useFirebase && db && state.userId) {
+                try {
+                    await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'nicknames', state.sessionId));
+                } catch(e){}
+            }
+            if (!state.useFirebase && state.nickname) {
+                state.activeNicknames.delete(state.nickname.toLowerCase());
+                localStorage.setItem('arena_nicknames', JSON.stringify(Array.from(state.activeNicknames)));
+                broadcastStateUpdate('SYNC_NICKNAMES', Array.from(state.activeNicknames));
+            }
+            state.nickname = '';
+            state.hasRegisteredNickname = false;
+            document.getElementById('headerProfile').classList.add('hidden');
+            document.getElementById('headerProfile').classList.remove('flex');
+            switchStage('stageNickname');
+        });
+
+        // ================= STAGE 2 LOGIC: LOBBY & ROOM LIST =================
+        window.showCreateRoomModal = function() {
+            document.getElementById('modalCreateRoom').classList.remove('hidden');
+            document.getElementById('modalCreateRoom').classList.add('flex');
+            document.getElementById('inputRoomTitle').focus();
+        };
+
+        window.hideCreateRoomModal = function() {
+            document.getElementById('modalCreateRoom').classList.add('hidden');
+            document.getElementById('modalCreateRoom').classList.remove('flex');
+        };
+
+        window.submitCreateRoom = async function() {
+            const titleInput = document.getElementById('inputRoomTitle').value.trim();
+            const roomTitle = titleInput || `${state.nickname}님의 대전 방`;
+            const selectedType = document.querySelector('input[name="gameType"]:checked').value;
+
+            // 수식 카드 대전은 별도 게임 페이지에서 시작합니다.
+            if (selectedType === 'mathcards') {
+                window.location.href = 'card_battle.html';
+                return;
+            }
+
+            const boardSize = selectedType === 'gomoku' ? 10 : selectedType === 'tictactoe' ? 3 : 0;
+            const newRoomId = 'room_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4);
+
+            const newRoom = {
+                id: newRoomId,
+                title: roomTitle,
+                gameType: selectedType,
+                boardSize: boardSize,
+                status: 'waiting', // waiting, in-progress, finished
+                hostId: state.userId,
+                hostName: state.nickname,
+                guestId: null,
+                guestName: null,
+                currentTurn: 'P1', // P1: Host, P2: Guest
+                boardState: Array(boardSize * boardSize).fill(null),
+                mathRound: 1,
+                mathScores: { P1: 0, P2: 0 },
+                mathSubmissions: { P1: null, P2: null },
+                mathSeed: Math.floor(Math.random() * 2147483647),
+                winner: null,
+                rematchRequest: { P1: false, P2: false },
+                updatedAt: Date.now()
+            };
+
+            state.currentRoomId = newRoomId;
+            state.isHost = true;
+            state.roomData = newRoom;
+
+            if (state.useFirebase && db) {
+                try {
+                    await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'game_rooms', newRoomId), newRoom);
+                } catch (e) {
+                    console.error("Error creating room on Firebase:", e);
+                }
+            } else {
+                state.rooms[newRoomId] = newRoom;
+                localStorage.setItem('arena_rooms', JSON.stringify(state.rooms));
+                broadcastStateUpdate('ROOM_UPDATED', newRoom);
+            }
+
+            hideCreateRoomModal();
+            enterGameStage();
+        };
+
+        window.joinRoom = async function(roomId) {
+            const room = state.rooms[roomId];
+            if (!room) return;
+
+            if (room.status !== 'waiting') {
+                alert("이미 대전이 진행 중이거나 종료된 방입니다.");
+                return;
+            }
+
+            if (room.hostId === state.userId) {
+                // Re-joining own room
+                state.currentRoomId = roomId;
+                state.isHost = true;
+                state.roomData = room;
+                enterGameStage();
+                return;
+            }
+
+            // Join as Guest (Player 2)
+            const updatedRoom = {
+                ...room,
+                guestId: state.userId,
+                guestName: state.nickname,
+                status: 'in-progress',
+                updatedAt: Date.now()
+            };
+
+            state.currentRoomId = roomId;
+            state.isHost = false;
+            state.roomData = updatedRoom;
+
+            if (state.useFirebase && db) {
+                try {
+                    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'game_rooms', roomId), {
+                        guestId: state.userId,
+                        guestName: state.nickname,
+                        status: 'in-progress',
+                        updatedAt: serverTimestamp()
+                    });
+                } catch (e) {
+                    console.error("Error joining room:", e);
+                }
+            } else {
+                state.rooms[roomId] = updatedRoom;
+                localStorage.setItem('arena_rooms', JSON.stringify(state.rooms));
+                broadcastStateUpdate('ROOM_UPDATED', updatedRoom);
+            }
+
+            enterGameStage();
+        };
+
+        window.refreshRoomsManual = function() {
+            renderRoomList();
+            announceMyPresence();
+        };
+
+        function renderRoomList() {
+            const container = document.getElementById('roomListGrid');
+            const roomKeys = Object.keys(state.rooms || {});
+            const activeRooms = roomKeys.map(k => ({ ...state.rooms[k], id: k })).filter(r => r && r.status !== 'deleted' && (r.status !== 'finished' || r.hostId === state.userId || (state.nickname && r.hostName?.toLowerCase() === state.nickname.toLowerCase())));
+
+            document.getElementById('roomCountBadge').textContent = activeRooms.length;
+
+            if (activeRooms.length === 0) {
+                container.innerHTML = `
+                    <div id="emptyRoomState" class="col-span-full glass-panel p-12 rounded-2xl text-center space-y-3">
+                        <div class="w-16 h-16 rounded-full bg-slate-800/80 mx-auto flex items-center justify-center text-slate-500 text-2xl">
+                            <i class="fa-solid fa-ghost"></i>
+                        </div>
+                        <h5 class="text-base font-bold text-slate-300">개설된 방이 없습니다</h5>
+                        <p class="text-xs text-slate-400 max-w-sm mx-auto">새로운 방을 만들어 도전자를 기다리거나 잠시 대기해보세요.</p>
+                        <button onclick="showCreateRoomModal()" class="mt-2 px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-brand-400 border border-slate-700 text-xs font-semibold transition-all">
+                            지금 방 만들기
+                        </button>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = activeRooms.map(room => {
+                const isMyRoom = room.hostId === state.userId || (state.nickname && room.hostName?.toLowerCase() === state.nickname.toLowerCase());
+                const isFull = room.status === 'in-progress';
+                const isFinished = room.status === 'finished';
+                const modeLabel = room.gameType === 'gomoku' ? '오목 (10x10)' : room.gameType === 'mathcards' ? '수식 카드 대전' : '틱택토 (3x3)';
+
+                return `
+                    <div class="glass-card p-5 rounded-2xl flex flex-col justify-between gap-4 relative overflow-hidden">
+                        ${isMyRoom ? `<span class="absolute top-3 right-3 px-2 py-0.5 rounded text-[10px] font-extrabold bg-brand-500/20 text-brand-300 border border-brand-500/40">내 방</span>` : ''}
+                        
+                        <div>
+                            <div class="flex items-center gap-2 mb-1.5">
+                                <span class="px-2 py-0.5 rounded text-[11px] font-bold ${room.gameType === 'gomoku' ? 'bg-neon-cyan/10 text-neon-cyan border border-neon-cyan/20' : 'bg-neon-magenta/10 text-neon-magenta border border-neon-magenta/20'}">
+                                    ${modeLabel}
+                                </span>
+                                <span class="text-xs font-semibold ${isFull ? 'text-amber-400' : 'text-emerald-400'}">
+                                    <i class="fa-solid fa-circle text-[8px] mr-1"></i>${isFull ? '게임 중' : '대기 중'}
+                                </span>
+                            </div>
+                            <h4 class="font-bold text-base text-white tracking-tight line-clamp-1">${escapeHtml(room.title)}</h4>
+                            <p class="text-xs text-slate-400 mt-1 flex items-center gap-1">
+                                <i class="fa-solid fa-user-shield text-slate-500"></i> 방장: <strong class="text-slate-200">${escapeHtml(room.hostName)}</strong>
+                            </p>
+                        </div>
+
+                        <div class="pt-3 border-t border-slate-800 flex items-center justify-between">
+                            <span class="text-xs text-slate-500">인원: <strong class="text-slate-300">${isFull ? '2/2' : '1/2'}</strong></span>
+                            ${isMyRoom ? `<button onclick="deleteRoomFromLobby('${room.id}')" class="px-3 py-2 rounded-xl text-xs font-bold text-rose-200 bg-rose-500/15 hover:bg-rose-500/30 border border-rose-500/30 transition-all"><i class="fa-solid fa-trash-can mr-1"></i>방 삭제</button>` : ''}
+                            <button onclick="joinRoom('${room.id}')" ${isFinished || (isFull && !isMyRoom) ? 'disabled' : ''}
+                                class="px-4 py-2 rounded-xl text-xs font-bold text-white ${isFinished || (isFull && !isMyRoom) ? 'bg-slate-800 opacity-50 cursor-not-allowed' : 'bg-brand-600 hover:bg-brand-500 shadow-md shadow-brand-500/20'} transition-all">
+                                ${isMyRoom ? '입장하기' : isFull ? '입장 불가' : '도전하기'}
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        window.deleteRoomFromLobby = async function(roomId) {
+            const roomEntry = Object.entries(state.rooms || {}).find(([key, value]) => key === roomId || value?.id === roomId);
+            const storedRoomId = roomEntry?.[0] || roomId;
+            const room = roomEntry?.[1];
+            if (!room) {
+                alert('방 정보를 찾을 수 없습니다. 방 목록을 새로고침한 뒤 다시 시도하세요.');
+                return;
+            }
+            const ownsRoom = room.hostId === state.userId || (state.nickname && room.hostName?.toLowerCase() === state.nickname.toLowerCase());
+            if (!ownsRoom) {
+                alert('내가 만든 방만 삭제할 수 있습니다.');
+                return;
+            }
+            if (!confirm(`"${room.title || '내 방'}"을 삭제할까요?`)) return;
+            try {
+                if (state.useFirebase && db) {
+                    const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'game_rooms', storedRoomId);
+                    try {
+                        await deleteDoc(roomRef);
+                    } catch (deleteError) {
+                        // If Firestore rules permit updates but reject deletes, hide the room with a tombstone.
+                        await updateDoc(roomRef, { status: 'deleted', deletedAt: serverTimestamp(), deletedBy: state.userId });
+                    }
+                    delete state.rooms[storedRoomId];
+                } else {
+                    const latestRooms = JSON.parse(localStorage.getItem('arena_rooms') || '{}');
+                    delete latestRooms[storedRoomId];
+                    state.rooms = latestRooms;
+                    localStorage.setItem('arena_rooms', JSON.stringify(latestRooms));
+                    broadcastStateUpdate('SYNC_ROOMS', latestRooms);
+                }
+                if (state.currentRoomId === storedRoomId) {
+                    state.currentRoomId = null;
+                    state.roomData = null;
+                    state.isHost = false;
+                    resetTurnTimer();
+                    switchStage('stageLobby');
+                }
+                renderRoomList();
+            } catch (error) {
+                console.error('Room deletion failed:', error);
+                alert('방 삭제에 실패했습니다. 잠시 후 다시 시도하세요.');
+            }
+        };
+
+        window.deleteCurrentRoom = function() {
+            if (!state.isHost || !state.currentRoomId) return;
+            deleteRoomFromLobby(state.currentRoomId);
+        };
+
+        // ================= STAGE 3 LOGIC: REAL-TIME GAME ARENA =================
+        function enterGameStage() {
+            switchStage('stageGame');
+            initBoardUI();
+            renderGameState();
+        }
+
+        function initBoardUI() {
+            if (!state.roomData) return;
+            if (state.roomData.gameType === 'mathcards') {
+                document.getElementById('gameBoard').innerHTML = '';
+                return;
+            }
+            const size = state.roomData.boardSize || 10;
+            const boardEl = document.getElementById('gameBoard');
+            
+            boardEl.style.gridTemplateColumns = `repeat(${size}, minmax(0, 1fr))`;
+            
+            // Adjust cell size for mobile / grid size
+            const cellSizeClass = size === 10 ? 'w-7 h-7 sm:w-10 sm:h-10 text-xs sm:text-base' : 'w-20 h-20 sm:w-24 sm:h-24 text-3xl sm:text-4xl';
+            
+            let cellsHTML = '';
+            for (let i = 0; i < size * size; i++) {
+                cellsHTML += `
+                    <div id="cell-${i}" onclick="makeMove(${i})" 
+                        class="board-cell ${cellSizeClass} flex items-center justify-center font-extrabold select-none transition-transform active:scale-95">
+                    </div>
+                `;
+            }
+            boardEl.innerHTML = cellsHTML;
+        }
+
+        function renderGameState() {
+            const room = state.roomData;
+            if (!room) return;
+
+            if (room.gameType === 'mathcards') {
+                renderMathGameState(room);
+                return;
+            }
+            document.getElementById('mathGameView').classList.add('hidden');
+            document.getElementById('btnDeleteCurrentRoom').classList.toggle('hidden', !state.isHost);
+            document.getElementById('p1Card').parentElement.style.display = '';
+            document.getElementById('gameBoard').closest('.relative').style.display = '';
+            document.getElementById('gameModeDisplay').parentElement.parentElement.style.display = '';
+
+            // Player Info Update
+            document.getElementById('p1Name').textContent = room.hostName || '방장';
+            document.getElementById('p2Name').textContent = room.guestName || '도전자 대기 중...';
+            document.getElementById('gameModeDisplay').textContent = room.gameType === 'gomoku' ? '오목 (10x10)' : '틱택토 (3x3)';
+
+            const isMyTurn = (room.currentTurn === 'P1' && state.isHost) || (room.currentTurn === 'P2' && !state.isHost);
+            const myRole = state.isHost ? 'P1' : 'P2';
+
+            // Active Player Highlight
+            const p1Card = document.getElementById('p1Card');
+            const p2Card = document.getElementById('p2Card');
+
+            if (room.status === 'in-progress') {
+                if (room.currentTurn === 'P1') {
+                    p1Card.className = "flex items-center gap-3 p-2 rounded-xl transition-all border border-brand-500 bg-brand-500/10 shadow-lg shadow-brand-500/10";
+                    p2Card.className = "flex items-center gap-3 p-2 rounded-xl transition-all border border-transparent opacity-60 flex-row-reverse text-right";
+                } else {
+                    p1Card.className = "flex items-center gap-3 p-2 rounded-xl transition-all border border-transparent opacity-60";
+                    p2Card.className = "flex items-center gap-3 p-2 rounded-xl transition-all border border-neon-cyan bg-neon-cyan/10 shadow-lg shadow-neon-cyan/10 flex-row-reverse text-right";
+                }
+            }
+
+            // Update Board Cells
+            const size = room.boardSize;
+            for (let i = 0; i < size * size; i++) {
+                const cellEl = document.getElementById(`cell-${i}`);
+                if (!cellEl) continue;
+
+                const val = room.boardState[i];
+                if (val === 'P1') {
+                    cellEl.innerHTML = `<span class="w-4 h-4 sm:w-6 sm:h-6 rounded-full bg-gradient-to-tr from-brand-700 to-brand-500 shadow-md flex items-center justify-center text-white text-[10px] sm:text-xs">✕</span>`;
+                    cellEl.classList.add('occupied');
+                } else if (val === 'P2') {
+                    cellEl.innerHTML = `<span class="w-4 h-4 sm:w-6 sm:h-6 rounded-full bg-gradient-to-tr from-cyan-500 to-teal-300 shadow-md flex items-center justify-center text-slate-950 font-black text-[10px] sm:text-xs">○</span>`;
+                    cellEl.classList.add('occupied');
+                } else {
+                    cellEl.innerHTML = '';
+                    cellEl.classList.remove('occupied');
+                }
+            }
+
+            // Status Badge & Overlay Management
+            const statusTag = document.getElementById('gameStatusTag');
+            const overlay = document.getElementById('boardOverlay');
+            const overlayTitle = document.getElementById('boardOverlayTitle');
+            const overlaySubtitle = document.getElementById('boardOverlaySubtitle');
+            const overlayIcon = document.getElementById('boardOverlayIcon');
+            const overlayActions = document.getElementById('boardOverlayActions');
+
+            if (room.status === 'waiting') {
+                overlay.classList.remove('hidden');
+                overlayActions.classList.add('hidden');
+                overlayTitle.textContent = "도전자를 기다리는 중...";
+                overlaySubtitle.textContent = "상대 플레이어가 방에 접속하면 게임이 바로 시작됩니다.";
+                overlayIcon.innerHTML = `<i class="fa-solid fa-hourglass-half"></i>`;
+                statusTag.className = "px-3 py-1 rounded-full text-xs font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20 mb-1 flex items-center gap-1.5";
+                statusTag.innerHTML = `<i class="fa-solid fa-spinner animate-spin"></i><span>상대방 대기 중</span>`;
+                resetTurnTimer(false);
+
+            } else if (room.status === 'in-progress') {
+                overlay.classList.add('hidden');
+                
+                if (isMyTurn) {
+                    statusTag.className = "px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 mb-1 flex items-center gap-1.5 animate-pulse";
+                    statusTag.innerHTML = `<i class="fa-solid fa-gamepad"></i><span>내 턴입니다! 돌을 놓으세요</span>`;
+                } else {
+                    statusTag.className = "px-3 py-1 rounded-full text-xs font-bold bg-slate-800 text-slate-400 border border-slate-700 mb-1 flex items-center gap-1.5";
+                    statusTag.innerHTML = `<i class="fa-solid fa-hourglass-start"></i><span>상대방이 생각 중입니다...</span>`;
+                }
+
+                startTurnTimer();
+
+            } else if (room.status === 'finished') {
+                overlay.classList.remove('hidden');
+                overlayActions.classList.remove('hidden');
+                resetTurnTimer(false);
+
+                const isWinner = room.winner === myRole;
+                const isDraw = room.winner === 'draw';
+
+                if (isDraw) {
+                    overlayTitle.textContent = "무승부!";
+                    overlaySubtitle.textContent = "팽팽한 접전 끝에 비겼습니다.";
+                    overlayIcon.className = "w-16 h-16 rounded-2xl bg-amber-500/20 text-amber-400 border border-amber-500/40 flex items-center justify-center text-3xl";
+                    overlayIcon.innerHTML = `<i class="fa-solid fa-handshake"></i>`;
+                    statusTag.className = "px-3 py-1 rounded-full text-xs font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30 mb-1";
+                    statusTag.textContent = "무승부 게임 종료";
+                } else if (isWinner) {
+                    overlayTitle.textContent = "승리했습니다! 🎉";
+                    overlaySubtitle.textContent = "멋진 전략으로 상대를 제압했습니다!";
+                    overlayIcon.className = "w-16 h-16 rounded-2xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 flex items-center justify-center text-3xl animate-bounce";
+                    overlayIcon.innerHTML = `<i class="fa-solid fa-trophy text-amber-400"></i>`;
+                    statusTag.className = "px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 mb-1";
+                    statusTag.textContent = "승리!";
+                    triggerConfetti();
+                } else {
+                    overlayTitle.textContent = "패배했습니다...";
+                    overlaySubtitle.textContent = "다음 판에서 복수해보세요!";
+                    overlayIcon.className = "w-16 h-16 rounded-2xl bg-rose-500/20 text-rose-400 border border-rose-500/40 flex items-center justify-center text-3xl";
+                    overlayIcon.innerHTML = `<i class="fa-solid fa-face-frown"></i>`;
+                    statusTag.className = "px-3 py-1 rounded-full text-xs font-bold bg-rose-500/20 text-rose-400 border border-rose-500/30 mb-1";
+                    statusTag.textContent = "패배";
+                }
+
+                // Rematch Status UI Feedback
+                const btnRematch = document.getElementById('btnRematch');
+                if (room.rematchRequest && room.rematchRequest[myRole]) {
+                    btnRematch.innerHTML = `<i class="fa-solid fa-spinner animate-spin"></i> 상대 응답 대기...`;
+                    btnRematch.disabled = true;
+                    btnRematch.className = "px-5 py-2.5 rounded-xl bg-slate-800 text-slate-400 font-bold text-sm cursor-not-allowed border border-slate-700 flex items-center gap-2";
+                } else {
+                    btnRematch.innerHTML = `<i class="fa-solid fa-rotate-right"></i> 다시 하기`;
+                    btnRematch.disabled = false;
+                    btnRematch.className = "px-5 py-2.5 rounded-xl bg-gradient-to-r from-brand-600 to-brand-500 hover:from-brand-500 hover:to-brand-400 text-white font-bold text-sm shadow-lg transition-all flex items-center gap-2";
+                }
+            }
+        }
+
+        function getMathCards(room, role) {
+            const roleOffset = role === 'P1' ? 101 : 907;
+            return Array.from({ length: 5 }, (_, i) => {
+                const n = Math.abs(Math.sin(room.mathSeed + roleOffset + room.mathRound * 97 + i * 31) * 100000) % 40;
+                return { value: Math.floor(n) + 1, suit: ['♠', '♥', '♦', '♣'][Math.floor(n) % 4] };
+            });
+        }
+
+        function mathExpressionValue() {
+            const cards = getMathCards(state.roomData, state.isHost ? 'P1' : 'P2');
+            const indices = [0, 1, 2].map(i => Number(document.getElementById(`mathN${i}`).value));
+            const nums = indices.map(i => cards[i].value);
+            const ops = [document.getElementById('mathOp0').value, document.getElementById('mathOp1').value];
+            let value;
+            if ((ops[0] === '*' || ops[0] === '/') && (ops[1] === '+' || ops[1] === '-')) {
+                const mid = ops[0] === '*' ? nums[0] * nums[1] : nums[0] / nums[1];
+                value = ops[1] === '+' ? mid + nums[2] : mid - nums[2];
+            } else if ((ops[1] === '*' || ops[1] === '/') && (ops[0] === '+' || ops[0] === '-')) {
+                const mid = ops[1] === '*' ? nums[1] * nums[2] : nums[1] / nums[2];
+                value = ops[0] === '+' ? nums[0] + mid : nums[0] - mid;
+            } else {
+                const mid = ops[0] === '+' ? nums[0] + nums[1] : ops[0] === '-' ? nums[0] - nums[1] : ops[0] === '*' ? nums[0] * nums[1] : nums[0] / nums[1];
+                value = ops[1] === '+' ? mid + nums[2] : ops[1] === '-' ? mid - nums[2] : ops[1] === '*' ? mid * nums[2] : mid / nums[2];
+            }
+            return Number.isFinite(value) ? Math.round(value * 100) / 100 : null;
+        }
+
+        function updateMathPreview() {
+            if (!state.roomData || state.roomData.gameType !== 'mathcards') return;
+            const picks = [0, 1, 2].map(i => document.getElementById(`mathN${i}`).value);
+            if (new Set(picks).size !== picks.length) {
+                document.getElementById('mathPreview').textContent = '서로 다른 숫자 카드 3장을 선택하세요';
+                document.getElementById('btnSubmitMath').disabled = true;
+                return;
+            }
+            const value = mathExpressionValue();
+            document.getElementById('mathPreview').textContent = value === null ? '0으로 나눌 수 없습니다' : `결과: ${value}`;
+            document.getElementById('btnSubmitMath').disabled = value === null;
+        }
+
+        function renderMathGameState(room) {
+            document.getElementById('mathGameView').classList.remove('hidden');
+            document.getElementById('btnDeleteMathRoom').classList.toggle('hidden', !state.isHost);
+            document.getElementById('gameBoard').closest('.relative').style.display = 'none';
+            document.getElementById('gameModeDisplay').parentElement.parentElement.style.display = 'none';
+            document.getElementById('p1Card').parentElement.style.display = 'none';
+            document.getElementById('gameModeDisplay').textContent = '수식 카드 대전';
+            const role = state.isHost ? 'P1' : 'P2';
+            const cards = getMathCards(room, role);
+            document.getElementById('mathRound').textContent = room.mathRound || 1;
+            document.getElementById('mathScore').textContent = `${room.mathScores?.P1 || 0} : ${room.mathScores?.P2 || 0}`;
+            document.getElementById('mathP1Name').textContent = `${room.hostName || 'P1'} (P1)`;
+            document.getElementById('mathP2Name').textContent = `${room.guestName || '상대 대기 중'} (P2)`;
+            document.getElementById('mathNumberCards').textContent = cards.map(c => `${c.suit}${c.value}`).join('　');
+            for (let slot = 0; slot < 3; slot++) {
+                const select = document.getElementById(`mathN${slot}`);
+                const previous = select.value;
+                select.innerHTML = cards.map((c, i) => `<option value="${i}">${c.suit}${c.value}</option>`).join('');
+                if (previous) select.value = previous;
+            }
+            const submissions = room.mathSubmissions || {};
+            const p1 = submissions.P1;
+            const p2 = submissions.P2;
+            document.getElementById('mathP1Result').textContent = p1 ? `${p1.value} 제출` : '미제출';
+            document.getElementById('mathP2Result').textContent = p2 ? `${p2.value} 제출` : '미제출';
+            const mySubmission = submissions[role];
+            const bothSubmitted = !!(p1 && p2);
+            document.getElementById('mathBuilder').classList.toggle('hidden', !!mySubmission || room.status !== 'in-progress');
+            document.getElementById('mathWaiting').classList.toggle('hidden', (!mySubmission && room.status !== 'waiting') || bothSubmitted);
+            document.getElementById('mathWaiting').textContent = room.status === 'waiting' ? '상대 플레이어가 방에 입장하면 대전이 시작됩니다.' : '제출 완료! 상대가 식을 완성할 때까지 기다리는 중입니다.';
+            document.getElementById('mathRoundActions').classList.toggle('hidden', !bothSubmitted);
+            document.getElementById('btnNextMathRound').classList.toggle('hidden', !state.isHost || room.status === 'finished');
+            if (bothSubmitted) {
+                const outcome = p1.value === p2.value ? '무승부' : p1.value > p2.value ? `${room.hostName} 승리` : `${room.guestName} 승리`;
+                const finalOutcome = room.winner === 'draw' ? '최종 무승부' : room.winner === 'P1' ? `${room.hostName} 최종 승리` : `${room.guestName} 최종 승리`;
+                document.getElementById('mathRoundMessage').textContent = room.status === 'finished' ? `${finalOutcome} · 점수 ${room.mathScores.P1}:${room.mathScores.P2}` : `라운드 ${room.mathRound} 결과 · ${outcome} (${p1.value} : ${p2.value})`;
+                document.getElementById('btnNextMathRound').textContent = room.mathRound >= 5 ? '최종 결과 확인' : '다음 라운드';
+            }
+            updateMathPreview();
+        }
+
+        ['mathN0', 'mathN1', 'mathN2', 'mathOp0', 'mathOp1'].forEach(id => document.getElementById(id).addEventListener('change', updateMathPreview));
+
+        async function persistMathPatch(room, patch) {
+            const applyPatch = (base) => {
+                const next = { ...base };
+                for (const [key, value] of Object.entries(patch)) {
+                    if (key.includes('.')) {
+                        const [root, child] = key.split('.', 2);
+                        next[root] = { ...(next[root] || {}), [child]: value };
+                    } else next[key] = value;
+                }
+                return next;
+            };
+            const updated = { ...applyPatch(room), updatedAt: Date.now() };
+            state.roomData = updated;
+            if (state.useFirebase && db) {
+                const firebasePatch = { updatedAt: serverTimestamp() };
+                for (const [key, value] of Object.entries(patch)) {
+                    if (key.startsWith('mathSubmissions.')) firebasePatch[key] = value;
+                    else firebasePatch[key] = value;
+                }
+                await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'game_rooms', room.id), firebasePatch);
+            } else {
+                const stored = JSON.parse(localStorage.getItem('arena_rooms') || '{}');
+                const latest = stored[room.id] || room;
+                const merged = { ...applyPatch(latest), updatedAt: Date.now() };
+                state.roomData = merged;
+                state.rooms[room.id] = merged;
+                localStorage.setItem('arena_rooms', JSON.stringify(state.rooms));
+                broadcastStateUpdate('ROOM_UPDATED', merged);
+            }
+            renderGameState();
+        }
+
+        window.submitMathExpression = async function() {
+            const room = state.roomData;
+            if (!room || room.status !== 'in-progress') return;
+            const role = state.isHost ? 'P1' : 'P2';
+            if (room.mathSubmissions?.[role]) return;
+            if (new Set([0, 1, 2].map(i => document.getElementById(`mathN${i}`).value)).size !== 3) return;
+            const value = mathExpressionValue();
+            if (value === null) return;
+            const cards = getMathCards(room, role);
+            const nums = [0, 1, 2].map(i => cards[Number(document.getElementById(`mathN${i}`).value)]);
+            const ops = [document.getElementById('mathOp0').value, document.getElementById('mathOp1').value];
+            const expression = `${nums[0].value} ${ops[0]} ${nums[1].value} ${ops[1]} ${nums[2].value}`;
+            try {
+                await persistMathPatch(room, { [`mathSubmissions.${role}`]: { value, expression } });
+            } catch (error) { console.error('Math card submission failed:', error); }
+        };
+
+        window.advanceMathRound = async function() {
+            const room = state.roomData;
+            if (!room || !state.isHost || !room.mathSubmissions?.P1 || !room.mathSubmissions?.P2) return;
+            const scores = { ...(room.mathScores || { P1: 0, P2: 0 }) };
+            if (room.mathSubmissions.P1.value > room.mathSubmissions.P2.value) scores.P1++;
+            else if (room.mathSubmissions.P2.value > room.mathSubmissions.P1.value) scores.P2++;
+            if (room.mathRound >= 5) {
+                const winner = scores.P1 === scores.P2 ? 'draw' : scores.P1 > scores.P2 ? 'P1' : 'P2';
+                await persistMathPatch(room, { mathScores: scores, winner, status: 'finished' });
+            } else {
+                await persistMathPatch(room, { mathScores: scores, mathRound: room.mathRound + 1, mathSubmissions: { P1: null, P2: null } });
+            }
+        };
+
+        // Handle Move Action
+        window.makeMove = async function(index) {
+            const room = state.roomData;
+            if (!room || room.status !== 'in-progress') return;
+
+            const myRole = state.isHost ? 'P1' : 'P2';
+            if (room.currentTurn !== myRole) {
+                showChatToast("시스템", "당신의 턴이 아닙니다! 기다려주세요.");
+                return;
+            }
+
+            if (room.boardState[index] !== null) return; // Cell occupied
+
+            const newBoardState = [...room.boardState];
+            newBoardState[index] = myRole;
+
+            const nextTurn = myRole === 'P1' ? 'P2' : 'P1';
+            const winner = checkWinner(newBoardState, room.boardSize, room.gameType);
+            const isBoardFull = newBoardState.every(c => c !== null);
+
+            let newStatus = room.status;
+            let finalWinner = room.winner;
+
+            if (winner) {
+                newStatus = 'finished';
+                finalWinner = winner;
+            } else if (isBoardFull) {
+                newStatus = 'finished';
+                finalWinner = 'draw';
+            }
+
+            const updatedRoom = {
+                ...room,
+                boardState: newBoardState,
+                currentTurn: nextTurn,
+                status: newStatus,
+                winner: finalWinner,
+                updatedAt: Date.now()
+            };
+
+            state.roomData = updatedRoom;
+            renderGameState();
+
+            if (state.useFirebase && db) {
+                try {
+                    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'game_rooms', room.id), updatedRoom);
+                } catch (e) {
+                    console.error("Error updating move on Firebase:", e);
+                }
+            } else {
+                state.rooms[room.id] = updatedRoom;
+                localStorage.setItem('arena_rooms', JSON.stringify(state.rooms));
+                broadcastStateUpdate('ROOM_UPDATED', updatedRoom);
+            }
+        };
+
+        // --- WINNER DETERMINATION ALGORITHM (TIC-TAC-TOE & GOMOKU) ---
+        function checkWinner(board, size, type) {
+            const winLength = type === 'gomoku' ? 5 : 3;
+
+            const getCell = (r, c) => {
+                if (r < 0 || r >= size || c < 0 || c >= size) return null;
+                return board[r * size + c];
+            };
+
+            const directions = [
+                [0, 1],   // Horizontal
+                [1, 0],   // Vertical
+                [1, 1],   // Diagonal Down-Right
+                [1, -1]   // Diagonal Down-Left
+            ];
+
+            for (let r = 0; r < size; r++) {
+                for (let c = 0; c < size; c++) {
+                    const player = getCell(r, c);
+                    if (!player) continue;
+
+                    for (const [dr, dc] of directions) {
+                        let count = 1;
+                        for (let step = 1; step < winLength; step++) {
+                            if (getCell(r + dr * step, c + dc * step) === player) {
+                                count++;
+                            } else {
+                                break;
+                            }
+                        }
+                        if (count >= winLength) return player;
+                    }
+                }
+            }
+            return null;
+        }
+
+        // --- TURN TIMER CONTROL ---
+        function startTurnTimer() {
+            resetTurnTimer(false);
+            state.timerSeconds = 30;
+            document.getElementById('timerText').textContent = state.timerSeconds;
+
+            state.timerInterval = setInterval(() => {
+                state.timerSeconds--;
+                document.getElementById('timerText').textContent = state.timerSeconds;
+
+                if (state.timerSeconds <= 0) {
+                    resetTurnTimer(false);
+                    handleTurnTimeout();
+                }
+            }, 1000);
+        }
+
+        function resetTurnTimer(resetDisplay = true) {
+            if (state.timerInterval) {
+                clearInterval(state.timerInterval);
+                state.timerInterval = null;
+            }
+            if (resetDisplay) {
+                document.getElementById('timerText').textContent = "30";
+            }
+        }
+
+        function handleTurnTimeout() {
+            const room = state.roomData;
+            if (!room || room.status !== 'in-progress') return;
+
+            const myRole = state.isHost ? 'P1' : 'P2';
+            // If timeout occurs on current player's turn, auto pass or forfeit
+            if (room.currentTurn === myRole) {
+                showChatToast("시간 초과", "30초 초과로 상대방에게 턴이 넘어갑니다!");
+                const nextTurn = myRole === 'P1' ? 'P2' : 'P1';
+                
+                const updatedRoom = {
+                    ...room,
+                    currentTurn: nextTurn,
+                    updatedAt: Date.now()
+                };
+                
+                state.roomData = updatedRoom;
+                renderGameState();
+
+                if (state.useFirebase && db) {
+                    updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'game_rooms', room.id), {
+                        currentTurn: nextTurn,
+                        updatedAt: serverTimestamp()
+                    });
+                } else {
+                    state.rooms[room.id] = updatedRoom;
+                    localStorage.setItem('arena_rooms', JSON.stringify(state.rooms));
+                    broadcastStateUpdate('ROOM_UPDATED', updatedRoom);
+                }
+            }
+        }
+
+        // --- REMATCH & ROOM LEAVE ACTIONS ---
+        window.requestRematch = async function() {
+            const room = state.roomData;
+            if (!room) return;
+
+            const myRole = state.isHost ? 'P1' : 'P2';
+            const otherRole = myRole === 'P1' ? 'P2' : 'P1';
+
+            const newRematchState = { ...room.rematchRequest, [myRole]: true };
+
+            // If both players requested rematch -> reset board
+            if (newRematchState.P1 && newRematchState.P2) {
+                const resetRoom = {
+                    ...room,
+                    status: 'in-progress',
+                    boardState: Array(room.boardSize * room.boardSize).fill(null),
+                    currentTurn: 'P1',
+                    winner: null,
+                    rematchRequest: { P1: false, P2: false },
+                    updatedAt: Date.now()
+                };
+
+                state.roomData = resetRoom;
+                renderGameState();
+
+                if (state.useFirebase && db) {
+                    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'game_rooms', room.id), resetRoom);
+                } else {
+                    state.rooms[room.id] = resetRoom;
+                    localStorage.setItem('arena_rooms', JSON.stringify(state.rooms));
+                    broadcastStateUpdate('ROOM_UPDATED', resetRoom);
+                }
+            } else {
+                // Wait for other player's approval
+                const updatedRoom = {
+                    ...room,
+                    rematchRequest: newRematchState,
+                    updatedAt: Date.now()
+                };
+                state.roomData = updatedRoom;
+                renderGameState();
+
+                if (state.useFirebase && db) {
+                    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'game_rooms', room.id), {
+                        [`rematchRequest.${myRole}`]: true
+                    });
+                } else {
+                    state.rooms[room.id] = updatedRoom;
+                    localStorage.setItem('arena_rooms', JSON.stringify(state.rooms));
+                    broadcastStateUpdate('ROOM_UPDATED', updatedRoom);
+                }
+            }
+        };
+
+        window.confirmLeaveRoom = function() {
+            if (confirm("정말로 대전 방에서 나가시겠습니까?")) {
+                leaveRoom();
+            }
+        };
+
+        window.leaveRoom = async function() {
+            resetTurnTimer();
+            const roomId = state.currentRoomId;
+            if (roomId && state.rooms[roomId]) {
+                const room = state.rooms[roomId];
+
+                if (state.isHost) {
+                    // Host leaves -> delete room
+                    if (state.useFirebase && db) {
+                        try {
+                            await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'game_rooms', roomId));
+                        } catch(e){}
+                    } else {
+                        delete state.rooms[roomId];
+                        localStorage.setItem('arena_rooms', JSON.stringify(state.rooms));
+                        broadcastStateUpdate('SYNC_ROOMS', state.rooms);
+                    }
+                } else {
+                    // Guest leaves -> set room status back to waiting
+                    const updatedRoom = {
+                        ...room,
+                        guestId: null,
+                        guestName: null,
+                        status: 'waiting',
+                        boardState: Array(room.boardSize * room.boardSize).fill(null),
+                        mathRound: 1,
+                        mathScores: { P1: 0, P2: 0 },
+                        mathSubmissions: { P1: null, P2: null },
+                        mathSeed: Math.floor(Math.random() * 2147483647),
+                        winner: null,
+                        currentTurn: 'P1',
+                        rematchRequest: { P1: false, P2: false },
+                        updatedAt: Date.now()
+                    };
+
+                    if (state.useFirebase && db) {
+                        try {
+                            await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'game_rooms', roomId), updatedRoom);
+                        } catch(e){}
+                    } else {
+                        state.rooms[roomId] = updatedRoom;
+                        localStorage.setItem('arena_rooms', JSON.stringify(state.rooms));
+                        broadcastStateUpdate('ROOM_UPDATED', updatedRoom);
+                    }
+                }
+            }
+
+            state.currentRoomId = null;
+            state.roomData = null;
+            state.isHost = false;
+            switchStage('stageLobby');
+        };
+
+        // --- QUICK REACTION CHAT & TOASTS ---
+        window.sendQuickEmote = function(text) {
+            if (!state.currentRoomId) return;
+            showChatToast(state.nickname, text);
+            broadcastStateUpdate('CHAT_EMOTE', {
+                roomId: state.currentRoomId,
+                user: state.nickname,
+                text: text
+            });
+        };
+
+        function showChatToast(user, text) {
+            const toast = document.getElementById('chatToast');
+            document.getElementById('chatToastUser').textContent = user;
+            document.getElementById('chatToastAvatar').textContent = user.charAt(0).toUpperCase();
+            document.getElementById('chatToastText').textContent = text;
+
+            toast.classList.remove('opacity-0', 'translate-y-10', 'pointer-events-none');
+            toast.classList.add('opacity-100', 'translate-y-0');
+
+            setTimeout(() => {
+                toast.classList.remove('opacity-100', 'translate-y-0');
+                toast.classList.add('opacity-0', 'translate-y-10', 'pointer-events-none');
+            }, 2500);
+        }
+
+        // --- UTILITY HELPERS ---
+        function switchStage(stageId) {
+            ['stageNickname', 'stageLobby', 'stageGame'].forEach(id => {
+                const el = document.getElementById(id);
+                if (id === stageId) {
+                    el.classList.remove('hidden');
+                    if (id === 'stageLobby') el.classList.add('flex');
+                    if (id === 'stageGame') el.classList.add('flex');
+                } else {
+                    el.classList.add('hidden');
+                    el.classList.remove('flex');
+                }
+            });
+        }
+
+        function triggerConfetti() {
+            if (typeof confetti === 'function') {
+                confetti({
+                    particleCount: 100,
+                    spread: 70,
+                    origin: { y: 0.6 }
+                });
+            }
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        }
+
+        // --- ON PAGE LOAD ---
+        window.addEventListener('load', () => {
+            initBackend();
+        });
+    </script>
+</body>
+</html>

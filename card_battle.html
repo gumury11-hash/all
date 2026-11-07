@@ -1,0 +1,772 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>카드 수식 대결</title>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: #ffffff;
+            --primary-color: #3b82f6;
+            --accent-color: #f59e0b;
+            --danger-color: #ef4444;
+            --text-color: #f8fafc;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+        }
+
+        body {
+            font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 15px;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 15px;
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            color: #fbbf24;
+            margin-bottom: 5px;
+        }
+
+        .status-board {
+            display: flex;
+            gap: 20px;
+            background: rgba(255, 255, 255, 0.05);
+            padding: 10px 20px;
+            border-radius: 12px;
+            margin-bottom: 15px;
+            font-weight: bold;
+        }
+
+        .game-container {
+            width: 100%;
+            max-width: 800px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .player-zone {
+            background: rgba(255, 255, 255, 0.03);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 15px;
+            position: relative;
+        }
+
+        .player-zone.active {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 15px rgba(59, 130, 246, 0.3);
+        }
+
+        .player-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .hand-container {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            min-height: 90px;
+            margin-bottom: 15px;
+            padding: 8px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 10px;
+        }
+
+        .slots-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 12px;
+        }
+
+        .slot {
+            width: 65px;
+            height: 90px;
+            border: 2px dashed rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .slot.operator-slot {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+        }
+
+        .slot.selected {
+            border-color: var(--accent-color);
+            background: rgba(245, 158, 11, 0.1);
+        }
+
+        .card {
+            width: 60px;
+            height: 85px;
+            background: var(--card-bg);
+            border-radius: 6px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 5px;
+            color: #1e293b;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+            transition: transform 0.15s;
+        }
+
+        .card:hover {
+            transform: translateY(-3px);
+        }
+
+        .card.red {
+            color: var(--danger-color);
+        }
+
+        .card.op-card {
+            background: #38bdf8;
+            color: #0f172a;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.2rem;
+            height: 50px;
+            width: 50px;
+            border-radius: 50%;
+        }
+
+        .card.unary-card {
+            background: #a855f7;
+            color: white;
+        }
+
+        .attached-unary {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            background: #a855f7;
+            color: white;
+            font-size: 0.75rem;
+            padding: 2px 6px;
+            border-radius: 10px;
+            border: 1px solid white;
+        }
+
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            background: var(--primary-color);
+            color: white;
+            transition: opacity 0.2s;
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .calc-preview {
+            text-align: center;
+            margin-top: 8px;
+            font-size: 1.1rem;
+            color: #fbbf24;
+            min-height: 25px;
+        }
+
+        .deal-status { text-align: center; color: #cbd5e1; }
+
+        .deck-picker {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(48px, 1fr));
+            gap: 7px;
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 10px;
+        }
+
+        .deck-card-back {
+            position: relative;
+            overflow: hidden;
+            min-height: 68px;
+            padding: 4px;
+            border: 3px solid #f8fafc;
+            outline: 1px solid #cbd5e1;
+            border-radius: 7px;
+            background-color: #172554;
+            background-image:
+                repeating-linear-gradient(45deg, transparent 0 4px, rgba(255,255,255,.82) 4px 5px, transparent 5px 9px),
+                repeating-linear-gradient(-45deg, transparent 0 4px, rgba(248,113,113,.9) 4px 5px, transparent 5px 9px),
+                linear-gradient(135deg, #1e3a8a, #172554 48%, #1e40af);
+            color: #fff;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 3px 5px rgba(0,0,0,.3);
+        }
+
+        .deck-card-back::before {
+            content: '';
+            position: absolute;
+            inset: 8px 5px;
+            border: 1px solid #f8fafc;
+            border-radius: 3px;
+            box-shadow: inset 0 0 0 2px rgba(248,113,113,.85);
+            pointer-events: none;
+        }
+
+        .deck-card-back::after {
+            content: '✦';
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            width: 24px;
+            height: 24px;
+            display: grid;
+            place-items: center;
+            transform: translate(-50%, -50%) rotate(45deg);
+            border: 2px double #f8fafc;
+            border-radius: 50%;
+            background: #991b1b;
+            color: #fff;
+            font-size: 15px;
+            text-shadow: 0 0 3px #fca5a5;
+            pointer-events: none;
+        }
+
+        .deck-card-back:hover { transform: translateY(-2px); }
+
+        .result-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 10;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            background: rgba(2, 6, 23, .82);
+        }
+
+        .result-overlay.visible { display: flex; }
+
+        .result-dialog {
+            width: min(100%, 420px);
+            padding: 26px;
+            border: 2px solid #fbbf24;
+            border-radius: 16px;
+            background: #1e293b;
+            text-align: center;
+            box-shadow: 0 18px 50px rgba(0,0,0,.45);
+        }
+
+        .result-dialog h2 { margin-bottom: 12px; color: #fbbf24; }
+        .result-dialog p { margin-bottom: 20px; line-height: 1.7; white-space: pre-line; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>수식 마스터 1:1 트럼프 대결</h1>
+        <div class="status-board">
+            <div>라운드: <span id="round-num">1</span>/5</div>
+            <div>플레이어 1 점수: <span id="p1-score">0</span></div>
+            <div>AI 점수: <span id="p2-score">0</span></div>
+        </div>
+    </header>
+
+    <div class="game-container">
+        <!-- AI / Player 2 영역 -->
+        <div class="player-zone" id="p2-zone">
+            <div class="player-info">
+                <h3>AI (상대방)</h3>
+                <span id="p2-status">대기 중</span>
+            </div>
+            <div class="slots-container" id="p2-slots">
+                <div class="slot num-slot"></div>
+                <div class="slot operator-slot"></div>
+                <div class="slot num-slot"></div>
+                <div class="slot operator-slot"></div>
+                <div class="slot num-slot"></div>
+            </div>
+            <div class="calc-preview" id="p2-preview">결과: -</div>
+        </div>
+
+        <!-- Player 1 영역 -->
+        <div class="player-zone active" id="p1-zone">
+            <div class="player-info">
+                <h3>플레이어 1 (나)</h3>
+                <span id="p1-status">카드배치 중</span>
+            </div>
+            <div class="deal-status" id="deal-status">숫자 카드 3장을 확인하고 보너스 카드를 뽑아주세요.</div>
+            <div class="hand-container" id="p1-hand"></div>
+            <div class="deck-picker" id="deck-picker"></div>
+            <div class="slots-container" id="p1-slots">
+                <div class="slot num-slot" data-index="0"></div>
+                <div class="slot operator-slot" data-index="1"></div>
+                <div class="slot num-slot" data-index="2"></div>
+                <div class="slot operator-slot" data-index="3"></div>
+                <div class="slot num-slot" data-index="4"></div>
+            </div>
+            <div class="calc-preview" id="p1-preview">수식을 완결해주세요</div>
+        </div>
+
+    </div>
+
+    <div class="result-overlay" id="result-overlay" aria-hidden="true">
+        <section class="result-dialog" role="dialog" aria-modal="true" aria-labelledby="result-title">
+            <h2 id="result-title"></h2>
+            <p id="result-detail"></p>
+            <button id="result-action" onclick="confirmResult()">결과 확인</button>
+        </section>
+    </div>
+
+    <script>
+        const SUITS = ['♠', '♥', '♦', '♣'];
+        const OPERATORS = ['+', '-', '*', '/', '√', '^2'];
+        
+        let numDeck = [];
+        let opDeck = [];
+        let aiNumDeck = [];
+        let aiOpDeck = [];
+        let currentRound = 1;
+        let p1Score = 0;
+        let p2Score = 0;
+        
+        let p1Hand = [];
+        let p2Hand = [];
+        let p1Slots = [null, null, null, null, null];
+        let p2Slots = [null, null, null, null, null];
+        let selectedCard = null;
+        let bonusDrawn = false;
+        let pickPhase = 'number';
+        let turnResolved = false;
+
+        function createDecks() {
+            numDeck = [];
+            for (let suit of SUITS) {
+                for (let val = 1; val <= 10; val++) {
+                    numDeck.push({ type: 'num', suit, val, id: `${suit}_${val}` });
+                }
+            }
+            opDeck = [];
+            for (let op of OPERATORS) {
+                for (let copy = 1; copy <= 5; copy++) {
+                    opDeck.push({ type: 'op', val: op, id: `op_${op}_${copy}` });
+                }
+            }
+            shuffle(numDeck);
+            shuffle(opDeck);
+            aiNumDeck = numDeck.map(card => ({ ...card }));
+            aiOpDeck = opDeck.map(card => ({ ...card }));
+            shuffle(aiNumDeck);
+            shuffle(aiOpDeck);
+        }
+
+        function shuffle(arr) {
+            for (let i = arr.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [arr[i], arr[j]] = [arr[j], arr[i]];
+            }
+        }
+
+        function startNewMatch() {
+            currentRound = 1;
+            p1Score = 0;
+            p2Score = 0;
+            createDecks();
+            updateScoreBoard();
+            startRound();
+        }
+
+        function startRound() {
+            if (currentRound > 5) {
+                alert(`게임 종료! 최종 결과 - 플레이어: ${p1Score} vs AI: ${p2Score}`);
+                return;
+            }
+            
+            p1Slots = [null, null, null, null, null];
+            p2Slots = [null, null, null, null, null];
+            selectedCard = null;
+
+            p1Hand = [];
+            p2Hand = dealCards();
+            bonusDrawn = false;
+            pickPhase = 'number';
+            turnResolved = false;
+
+            renderHand();
+            renderDeckPicker();
+            renderSlots();
+            updatePreview();
+            
+            document.getElementById('round-num').textContent = currentRound;
+            document.getElementById('p2-preview').textContent = "결과: -";
+            document.getElementById('result-overlay').classList.remove('visible');
+            document.getElementById('result-overlay').setAttribute('aria-hidden', 'true');
+            document.getElementById('deal-status').textContent = `뒤집힌 숫자 카드 ${numDeck.length}장 중 3장을 선택하세요.`;
+        }
+
+        function renderDeckPicker() {
+            const picker = document.getElementById('deck-picker');
+            picker.innerHTML = '';
+            if (pickPhase === 'arrange') {
+                picker.style.display = 'none';
+                return;
+            }
+            picker.style.display = 'grid';
+            const deck = pickPhase === 'number' ? numDeck : opDeck;
+            deck.forEach(card => {
+                const back = document.createElement('button');
+                back.type = 'button';
+                back.className = 'deck-card-back';
+                back.textContent = '';
+                back.setAttribute('aria-label', '뒤집힌 카드 선택');
+                back.onclick = () => selectDeckCard(card);
+                picker.appendChild(back);
+            });
+        }
+
+        function selectDeckCard(card) {
+            if (pickPhase === 'number') {
+                const index = numDeck.findIndex(item => item.id === card.id);
+                if (index < 0 || p1Hand.filter(item => item.type === 'num').length >= 3) return;
+                numDeck.splice(index, 1);
+                p1Hand.push(card);
+                const numberCount = p1Hand.filter(item => item.type === 'num').length;
+                if (numberCount === 3) {
+                    pickPhase = 'bonus';
+                    document.getElementById('deal-status').textContent = `숫자 3장을 골랐습니다. 뒤집힌 보너스 카드 ${opDeck.length}장 중 2장을 선택하세요.`;
+                } else {
+                    document.getElementById('deal-status').textContent = `숫자 카드 ${numberCount}/3장 선택. 뒤집힌 카드 ${numDeck.length}장 남음.`;
+                }
+            } else if (pickPhase === 'bonus' || pickPhase === 'bonus-extra') {
+                const index = opDeck.findIndex(item => item.id === card.id);
+                if (index < 0) return;
+                opDeck.splice(index, 1);
+                p1Hand.push(card);
+                const bonusCards = p1Hand.filter(item => item.type === 'op');
+                const arithmeticCount = bonusCards.filter(item => ['+', '-', '/', '*'].includes(item.val)).length;
+                if (arithmeticCount >= 2) {
+                    finishCardPicking();
+                } else {
+                    pickPhase = bonusCards.length < 2 ? 'bonus' : 'bonus-extra';
+                    document.getElementById('deal-status').textContent = `+ − ÷ × 카드 ${arithmeticCount}/2장입니다. 조건을 채울 때까지 보너스 카드를 계속 선택하세요. 뒤집힌 카드 ${opDeck.length}장 남음.`;
+                }
+            }
+            renderHand();
+            renderDeckPicker();
+            updatePreview();
+        }
+
+        function finishCardPicking() {
+            pickPhase = 'arrange';
+            bonusDrawn = true;
+            const numberCards = p1Hand
+                .filter(card => card.type === 'num')
+                .sort((a, b) => b.val - a.val);
+            numberCards.forEach((card, index) => {
+                p1Slots[index * 2] = { type: 'num', card, unary: null };
+                removeFromHand(card);
+            });
+            renderSlots();
+            document.getElementById('deal-status').textContent = '카드 선택이 끝났습니다. 수식에 카드를 배치하세요.';
+        }
+
+        function dealCards() {
+            let hand = [];
+            let unaryCount = 0;
+
+            for (let i = 0; i < 3; i++) {
+                if (aiNumDeck.length > 0) hand.push(aiNumDeck.pop());
+            }
+
+            for (let i = 0; i < 2; i++) {
+                if (aiOpDeck.length > 0) {
+                    let card = aiOpDeck.pop();
+                    hand.push(card);
+                    if (card.val === '√' || card.val === '^2') unaryCount++;
+                }
+            }
+
+            while (unaryCount > 0 && aiOpDeck.length > 0) {
+                hand.push(aiOpDeck.pop());
+                unaryCount--;
+            }
+
+            return hand;
+        }
+
+        function renderHand() {
+            const container = document.getElementById('p1-hand');
+            container.innerHTML = '';
+            
+            p1Hand.forEach(card => {
+                if (!card) return;
+                const div = document.createElement('div');
+                const isRed = card.suit === '♥' || card.suit === '♦';
+                
+                if (card.type === 'num') {
+                    div.className = `card ${isRed ? 'red' : ''}`;
+                    div.innerHTML = `<div>${card.val}</div><div style="font-size:1.2rem;text-align:center;">${card.suit}</div><div style="text-align:right;">${card.val}</div>`;
+                } else {
+                    const isUnary = card.val === '√' || card.val === '^2';
+                    div.className = `card op-card ${isUnary ? 'unary-card' : ''}`;
+                    div.textContent = card.val;
+                }
+
+                div.onclick = () => {
+                    if (pickPhase === 'arrange') selectCard(card, div);
+                };
+                if (card.type === 'num') {
+                    div.ondblclick = (event) => {
+                        event.preventDefault();
+                        if (pickPhase !== 'arrange') return;
+                        selectedCard = card;
+                        registerSelectedNumber();
+                    };
+                }
+                container.appendChild(div);
+            });
+        }
+
+        function selectCard(card, element) {
+            document.querySelectorAll('#p1-hand .card').forEach(el => el.style.border = 'none');
+            selectedCard = card;
+            element.style.border = '2px solid #f59e0b';
+        }
+
+        function renderSlots() {
+            const slots = document.querySelectorAll('#p1-slots .slot');
+            slots.forEach((slot, idx) => {
+                slot.onclick = () => placeInSlot(idx);
+                slot.innerHTML = '';
+                
+                const item = p1Slots[idx];
+                if (item) {
+                    if (item.type === 'num') {
+                        const isRed = item.card.suit === '♥' || item.card.suit === '♦';
+                        let html = `<div class="card ${isRed ? 'red' : ''}" style="width:100%;height:100%;">
+                            <div>${item.card.val}</div>
+                            <div style="text-align:center;">${item.card.suit}</div>
+                        </div>`;
+                        if (item.unary) {
+                            html += `<div class="attached-unary">${item.unary.val}</div>`;
+                        }
+                        slot.innerHTML = html;
+                    } else if (item.type === 'op') {
+                        slot.innerHTML = `<div class="card op-card" style="width:100%;height:100%;">${item.card.val}</div>`;
+                    }
+                }
+            });
+        }
+
+        function placeInSlot(idx) {
+            if (pickPhase !== 'arrange') return;
+            if (!selectedCard) return;
+            if (selectedCard.type === 'num') {
+                registerSelectedNumber(idx);
+                return;
+            }
+
+            const isNumSlot = idx % 2 === 0;
+
+            if (selectedCard.type === 'num' && isNumSlot) {
+                if (!p1Slots[idx]) {
+                    p1Slots[idx] = { type: 'num', card: selectedCard, unary: null };
+                    removeFromHand(selectedCard);
+                }
+            } else if (selectedCard.type === 'op') {
+                const isUnary = selectedCard.val === '√' || selectedCard.val === '^2';
+                if (isUnary && isNumSlot && p1Slots[idx]) {
+                    p1Slots[idx].unary = selectedCard;
+                    removeFromHand(selectedCard);
+                } else if (!isUnary && !isNumSlot && !p1Slots[idx]) {
+                    p1Slots[idx] = { type: 'op', card: selectedCard };
+                    removeFromHand(selectedCard);
+                }
+            }
+
+            selectedCard = null;
+            renderHand();
+            renderSlots();
+            updatePreview();
+        }
+
+        function registerSelectedNumber(targetIdx = null) {
+            if (pickPhase !== 'arrange') return;
+            if (!selectedCard || selectedCard.type !== 'num') return;
+            const idx = targetIdx === null ? [0, 2, 4].find(i => !p1Slots[i]) : targetIdx;
+            if (idx === undefined || idx % 2 !== 0 || p1Slots[idx]) return;
+            p1Slots[idx] = { type: 'num', card: selectedCard, unary: null };
+            removeFromHand(selectedCard);
+            selectedCard = null;
+            renderHand();
+            renderSlots();
+            updatePreview();
+        }
+
+        function removeFromHand(card) {
+            const idx = p1Hand.findIndex(c => c && c.id === card.id);
+            if (idx !== -1) p1Hand.splice(idx, 1);
+        }
+
+        function resetCurrentSlots() {
+            p1Slots.forEach(item => {
+                if (item) {
+                    if (item.card) p1Hand.push(item.card);
+                    if (item.unary) p1Hand.push(item.unary);
+                }
+            });
+            p1Slots = [null, null, null, null, null];
+            selectedCard = null;
+            renderHand();
+            renderSlots();
+            updatePreview();
+        }
+
+        function calculateExpression(slots) {
+            if (slots.includes(null)) return null;
+
+            let vals = [];
+            for (let i = 0; i < 5; i += 2) {
+                let v = slots[i].card.val;
+                if (slots[i].unary) {
+                    if (slots[i].unary.val === '√') v = Math.sqrt(v);
+                    if (slots[i].unary.val === '^2') v = Math.pow(v, 2);
+                }
+                vals.push(v);
+            }
+
+            let op1 = slots[1].card.val;
+            let op2 = slots[3].card.val;
+
+            let res = 0;
+            if ((op1 === '*' || op1 === '/') && (op2 === '+' || op2 === '-')) {
+                let temp = evalStep(vals[0], op1, vals[1]);
+                res = evalStep(temp, op2, vals[2]);
+            } else if ((op2 === '*' || op2 === '/') && (op1 === '+' || op1 === '-')) {
+                let temp = evalStep(vals[1], op2, vals[2]);
+                res = evalStep(vals[0], op1, temp);
+            } else {
+                let temp = evalStep(vals[0], op1, vals[1]);
+                res = evalStep(temp, op2, vals[2]);
+            }
+
+            return isFinite(res) ? Math.round(res * 100) / 100 : null;
+        }
+
+        function evalStep(a, op, b) {
+            if (op === '+') return a + b;
+            if (op === '-') return a - b;
+            if (op === '*') return a * b;
+            if (op === '/') return b !== 0 ? a / b : NaN;
+            return 0;
+        }
+
+        function updatePreview() {
+            const res = calculateExpression(p1Slots);
+            const previewEl = document.getElementById('p1-preview');
+
+            if (res !== null && bonusDrawn) {
+                previewEl.textContent = `계산 결과: ${res}`;
+                submitTurn();
+            } else {
+                previewEl.textContent = bonusDrawn ? "수식을 완성해주세요" : "보너스 카드를 먼저 선택해주세요";
+            }
+        }
+
+        function submitTurn() {
+            if (!bonusDrawn || turnResolved) return;
+            const p1Res = calculateExpression(p1Slots);
+            if (p1Res === null) return;
+            turnResolved = true;
+            const p2Res = runAI();
+
+            document.getElementById('p2-preview').textContent = `계산 결과: ${p2Res}`;
+            let result;
+            if (p1Res > p2Res) {
+                p1Score++;
+                result = '승리';
+            } else if (p2Res > p1Res) {
+                p2Score++;
+                result = '패배';
+            } else {
+                result = '무승부';
+            }
+            updateScoreBoard();
+
+            const isFinalRound = currentRound === 5;
+            document.getElementById('result-title').textContent = isFinalRound ? '5게임 완료' : `${currentRound}게임 결과: ${result}`;
+            document.getElementById('result-detail').textContent = isFinalRound
+                ? `이번 게임: 나 ${p1Res} : ${p2Res} AI (${result})\n최종 점수: 나 ${p1Score} : ${p2Score} AI`
+                : `계산 결과 — 나 ${p1Res} : ${p2Res} AI\n현재 점수 — 나 ${p1Score} : ${p2Score} AI`;
+            document.getElementById('result-action').textContent = isFinalRound ? '새 게임 시작' : '결과 확인';
+            const overlay = document.getElementById('result-overlay');
+            overlay.classList.add('visible');
+            overlay.setAttribute('aria-hidden', 'false');
+        }
+
+        function confirmResult() {
+            if (currentRound === 5) {
+                startNewMatch();
+                return;
+            }
+            currentRound++;
+            startRound();
+        }
+
+        function runAI() {
+            let nums = p2Hand.filter(c => c.type === 'num');
+            let ops = p2Hand.filter(c => c.type === 'op' && c.val !== '√' && c.val !== '^2');
+            let unaries = p2Hand.filter(c => c.type === 'op' && (c.val === '√' || c.val === '^2'));
+
+            if (nums.length < 3 || ops.length < 2) return 0;
+
+            let dummySlots = [
+                { type: 'num', card: nums[0], unary: unaries[0] || null },
+                { type: 'op', card: ops[0] },
+                { type: 'num', card: nums[1], unary: null },
+                { type: 'op', card: ops[1] },
+                { type: 'num', card: nums[2], unary: null }
+            ];
+
+            return calculateExpression(dummySlots) || 0;
+        }
+
+        function updateScoreBoard() {
+            document.getElementById('p1-score').textContent = p1Score;
+            document.getElementById('p2-score').textContent = p2Score;
+        }
+
+        // 게임 자동 시작
+        startNewMatch();
+    </script>
+</body>
+</html>
