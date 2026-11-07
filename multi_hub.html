@@ -588,7 +588,7 @@
                     renderRoomList();
                     if (state.currentRoomId === updatedRoom.id) {
                         state.roomData = updatedRoom;
-                        renderGameState();
+                        checkActiveRoomSync();
                     }
                 }
             } else if (msg.type === 'CHAT_EMOTE') {
@@ -693,6 +693,10 @@
                     return;
                 }
                 state.roomData = freshRoom;
+                if (freshRoom.gameType === 'mathcards' && freshRoom.status === 'in-progress' && freshRoom.guestId) {
+                    launchCardBattle(freshRoom, state.isHost ? 'P1' : 'P2');
+                    return;
+                }
                 renderGameState();
             } else if (state.currentRoomId) {
                 state.currentRoomId = null;
@@ -702,6 +706,15 @@
                 switchStage('stageLobby');
                 showChatToast('방 삭제', '현재 방이 삭제되었습니다.');
             }
+        }
+
+        function launchCardBattle(room, role) {
+            if (typeof __firebase_config !== 'undefined' && __firebase_config) {
+                sessionStorage.setItem('card_battle_firebase_config', __firebase_config);
+                sessionStorage.setItem('card_battle_app_id', appId);
+            }
+            const params = new URLSearchParams({ roomId: room.id, role, nickname: state.nickname });
+            window.location.href = `./card_battle.html?${params.toString()}`;
         }
 
         // ================= STAGE 1 LOGIC: NICKNAME VALIDATION =================
@@ -988,12 +1001,6 @@
             const roomTitle = titleInput || `${state.nickname}님의 대전 방`;
             const selectedType = document.querySelector('input[name="gameType"]:checked').value;
 
-            // 수식 카드 대전은 별도 게임 페이지에서 시작합니다.
-            if (selectedType === 'mathcards') {
-                window.location.href = 'card_battle.html';
-                return;
-            }
-
             const boardSize = selectedType === 'gomoku' ? 10 : selectedType === 'tictactoe' ? 3 : 0;
             const newRoomId = 'room_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4);
 
@@ -1013,6 +1020,7 @@
                 mathScores: { P1: 0, P2: 0 },
                 mathSubmissions: { P1: null, P2: null },
                 mathSeed: Math.floor(Math.random() * 2147483647),
+                cardBattle: { round: 1, scores: { P1: 0, P2: 0 }, submissions: {}, ready: {}, resolvedRound: 0 },
                 winner: null,
                 rematchRequest: { P1: false, P2: false },
                 updatedAt: Date.now()
@@ -1052,6 +1060,10 @@
                 state.currentRoomId = roomId;
                 state.isHost = true;
                 state.roomData = room;
+                if (room.gameType === 'mathcards' && room.status === 'in-progress' && room.guestId) {
+                    launchCardBattle(room, 'P1');
+                    return;
+                }
                 enterGameStage();
                 return;
             }
@@ -1086,6 +1098,10 @@
                 broadcastStateUpdate('ROOM_UPDATED', updatedRoom);
             }
 
+            if (room.gameType === 'mathcards') {
+                launchCardBattle(updatedRoom, 'P2');
+                return;
+            }
             enterGameStage();
         };
 
