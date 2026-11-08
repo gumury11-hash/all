@@ -334,6 +334,7 @@
 
     <header>
         <h1>수식 마스터 1:1 트럼프 대결</h1>
+        <div id="peer-share" style="display:none;margin:8px auto;color:#3978d4;font-size:.9rem;font-weight:700"></div>
         <div class="status-board">
             <div>라운드: <span id="round-num">1</span>/5</div>
             <div>플레이어 1 점수: <span id="p1-score">0</span></div>
@@ -387,23 +388,21 @@
         </section>
     </div>
 
+    <script src="https://unpkg.com/peerjs@1.5.5/dist/peerjs.min.js"></script>
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, getDoc, onSnapshot, updateDoc, runTransaction } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         const battleParams = new URLSearchParams(window.location.search);
         const battleContext = {
             roomId: battleParams.get('roomId'),
             role: battleParams.get('role') === 'P2' ? 'P2' : 'P1',
-            nickname: battleParams.get('nickname') || ''
+            nickname: battleParams.get('nickname') || '',
+            peerId: battleParams.get('peerId') || ''
         };
-        let battleDb = null;
-        let battleRoomRef = null;
+        let battlePeer = null;
+        let battleConnection = null;
         let battleRoom = null;
         let battleSyncReady = false;
         let lastShownRound = 0;
-        let localBattleChannel = null;
         let advanceInProgress = false;
 
         const emptyBattleState = () => ({ round: 1, scores: { P1: 0, P2: 0 }, submissions: {}, ready: {}, resolvedRound: 0 });
@@ -411,6 +410,7 @@
         function applyBattleState(shared) {
             if (!shared || !battleSyncReady) return;
             currentRound = shared.round || 1;
+            document.getElementById('round-num').textContent = currentRound;
             p1Score = shared.scores?.P1 || 0;
             p2Score = shared.scores?.P2 || 0;
             updateScoreBoard();
@@ -466,122 +466,116 @@
                 startRound();
             }
 
-            if (battleContext.role === 'P1' && shared.ready?.P1 && shared.ready?.P2) advanceSharedRoundIfReady();
+            if (shared.ready?.P1 && shared.ready?.P2) advanceSharedRoundIfReady();
         }
 
         async function initializeBattleSync() {
-            if (!battleContext.roomId) return false;
-            const firebaseConfigText = sessionStorage.getItem('card_battle_firebase_config');
-            if (firebaseConfigText) {
-                try {
-                    const firebaseConfig = JSON.parse(firebaseConfigText);
-                    const app = initializeApp(firebaseConfig, `card-battle-${battleContext.roomId}`);
-                    const auth = getAuth(app);
-                    await signInAnonymously(auth);
-                    battleDb = getFirestore(app);
-                    const appId = sessionStorage.getItem('card_battle_app_id') || '1v1-game-app-default';
-                    battleRoomRef = doc(battleDb, 'artifacts', appId, 'public', 'data', 'game_rooms', battleContext.roomId);
-                    const roomSnapshot = await getDoc(battleRoomRef);
-                    if (!roomSnapshot.exists()) throw new Error('Match room not found');
-                    battleRoom = roomSnapshot.data();
-                    if (!battleRoom.cardBattle) {
-                        await updateDoc(battleRoomRef, { cardBattle: emptyBattleState() });
-                    }
+            if (!battleContext.roomId || !window.Peer) return false;
+            battleRoom = { id: battleContext.roomId, cardBattle: emptyBattleState() };
+            const connectAsHost = () => {
+                battlePeer = new Peer(battleContext.peerId || undefined);
+                battlePeer.on('open', id => {
+                    battleContext.peerId = id;
+                    const share = document.getElementById('peer-share');
+                    share.textContent = `Peer ID ${id} — 상대에게 공유하세요.`;
+                    share.style.display = 'block';
+                    document.getElementById('deal-status').textContent = `Peer ID ${id} 를 상대에게 공유하세요.`;
+                    battlePeer.on('connection', connection => {
+                        battleConnection = connection;
+                        connection.on('open', () => connection.send({ type: 'BATTLE_STATE', payload: battleRoom.cardBattle }));
+                        connection.on('data', handleBattleMessage);
+                    });
                     battleSyncReady = true;
-                    onSnapshot(battleRoomRef, snapshot => {
-                        if (!snapshot.exists()) return;
-                        battleRoom = snapshot.data();
-                        applyBattleState(battleRoom.cardBattle || emptyBattleState());
-                    }, error => console.error('Card battle sync failed:', error));
-                    return true;
-                } catch (error) {
-                    console.error('Firebase card battle setup failed:', error);
-                    alert('온라인 게임 연결에 실패했습니다. 로비에서 다시 입장해 주세요.');
-                    window.location.href = './multi_hub.html';
-                    return false;
-                }
+                    applyBattleState(battleRoom.cardBattle);
+                });
+                battlePeer.on('error', error => {
+                    console.error('PeerJS host setup failed:', error);
+                    alert(`Peer 연결 준비 실패: ${error.type || error.message}`);
+                });
+            };
+            if (battleContext.role === 'P1') {
+                connectAsHost();
+                return await new Promise(resolve => {
+                    const timer = setInterval(() => {
+                        if (battleSyncReady) { clearInterval(timer); resolve(true); }
+                    }, 100);
+                    setTimeout(() => { clearInterval(timer); resolve(false); }, 15000);
+                });
             }
-
-            battleRoom = JSON.parse(localStorage.getItem('arena_rooms') || '{}')[battleContext.roomId];
-            if (!battleRoom) {
-                alert('대전 방 정보를 찾을 수 없습니다. 로비에서 다시 입장해 주세요.');
-                window.location.href = './multi_hub.html';
-                return false;
-            }
-            if (!battleRoom.cardBattle) battleRoom.cardBattle = emptyBattleState();
-            battleSyncReady = true;
-            if ('BroadcastChannel' in window) {
-                localBattleChannel = new BroadcastChannel('duel_arena_sync_channel');
-                localBattleChannel.onmessage = event => {
-                    if (event.data?.type === 'ROOM_UPDATED' && event.data.payload?.id === battleContext.roomId) {
-                        battleRoom = event.data.payload;
-                        applyBattleState(battleRoom.cardBattle || emptyBattleState());
-                    }
+            let peerId = battleContext.peerId || prompt('방장 Peer ID를 입력하세요.');
+            if (!peerId) return false;
+            battlePeer = new Peer();
+            return await new Promise(resolve => {
+                let attempts = 0;
+                const connect = () => {
+                    if (attempts++ >= 20) { alert('방장 Peer에 연결하지 못했습니다. Peer ID를 확인하세요.'); resolve(false); return; }
+                    const connection = battlePeer.connect(peerId, { reliable: true, metadata: { nickname: battleContext.nickname } });
+                    connection.on('open', () => {
+                        battleConnection = connection;
+                        battleSyncReady = true;
+                        connection.send({ type: 'JOIN' });
+                        resolve(true);
+                    });
+                    connection.on('data', handleBattleMessage);
+                    connection.on('error', () => setTimeout(connect, 700));
+                    connection.on('close', () => { if (!battleSyncReady) setTimeout(connect, 700); });
                 };
-            }
-            window.addEventListener('storage', event => {
-                if (event.key !== 'arena_rooms') return;
-                const rooms = JSON.parse(event.newValue || '{}');
-                if (rooms[battleContext.roomId]) {
-                    battleRoom = rooms[battleContext.roomId];
-                    applyBattleState(battleRoom.cardBattle || emptyBattleState());
-                }
+                battlePeer.on('open', connect);
+                battlePeer.on('error', error => {
+                    console.error('PeerJS client setup failed:', error);
+                    if (error.type === 'peer-unavailable') setTimeout(connect, 700);
+                    else resolve(false);
+                });
             });
-            return true;
         }
 
-        async function updateSharedBattle(patch) {
-            if (battleDb && battleRoomRef) {
-                await updateDoc(battleRoomRef, patch);
-                return;
+        function handleBattleMessage(message) {
+            if (!message) return;
+            if (message.type === 'JOIN' && battleContext.role === 'P1') {
+                battleConnection?.send({ type: 'BATTLE_STATE', payload: battleRoom.cardBattle });
+            } else if (message.type === 'BATTLE_PATCH' && battleContext.role === 'P1') {
+                applyBattlePatch(message.payload || {});
+                battleConnection?.send({ type: 'BATTLE_STATE', payload: battleRoom.cardBattle });
+                applyBattleState(battleRoom.cardBattle);
+            } else if (message.type === 'BATTLE_STATE' && message.payload) {
+                battleRoom.cardBattle = message.payload;
+                applyBattleState(message.payload);
             }
-            const rooms = JSON.parse(localStorage.getItem('arena_rooms') || '{}');
-            const room = rooms[battleContext.roomId];
-            if (!room) throw new Error('Match room not found');
-            const shared = { ...(room.cardBattle || emptyBattleState()) };
+        }
+
+        function applyBattlePatch(patch) {
+            const shared = { ...(battleRoom.cardBattle || emptyBattleState()) };
             for (const [key, value] of Object.entries(patch)) {
                 const parts = key.split('.');
                 let target = shared;
                 for (const part of parts.slice(0, -1)) target = target[part] = { ...(target[part] || {}) };
                 target[parts[parts.length - 1]] = value;
             }
-            room.cardBattle = shared;
-            rooms[battleContext.roomId] = room;
-            localStorage.setItem('arena_rooms', JSON.stringify(rooms));
-            battleRoom = room;
-            localBattleChannel?.postMessage({ type: 'ROOM_UPDATED', payload: room });
-            applyBattleState(shared);
+            battleRoom.cardBattle = shared;
         }
 
+        async function updateSharedBattle(patch) {
+            if (!battleSyncReady || !battleConnection && battleContext.role === 'P2') throw new Error('Peer connection is not ready');
+            if (battleContext.role === 'P1') {
+                applyBattlePatch(patch);
+                battleConnection?.send({ type: 'BATTLE_STATE', payload: battleRoom.cardBattle });
+                applyBattleState(battleRoom.cardBattle);
+            } else {
+                battleConnection.send({ type: 'BATTLE_PATCH', payload: patch });
+            }
+        }
         async function advanceSharedRoundIfReady() {
             if (battleContext.role !== 'P1' || advanceInProgress) return;
             advanceInProgress = true;
             try {
-                if (battleDb && battleRoomRef) {
-                    await runTransaction(battleDb, async transaction => {
-                        const snapshot = await transaction.get(battleRoomRef);
-                        const room = snapshot.data();
-                        const shared = room?.cardBattle;
-                        if (!shared?.submissions?.P1 || !shared?.submissions?.P2 || !shared.ready?.P1 || !shared.ready?.P2) return;
-                        if (shared.round < 5) {
-                            const scores = { ...(shared.scores || { P1: 0, P2: 0 }) };
-                            if (shared.submissions.P1.value > shared.submissions.P2.value) scores.P1++;
-                            else if (shared.submissions.P2.value > shared.submissions.P1.value) scores.P2++;
-                            transaction.update(battleRoomRef, { cardBattle: { round: shared.round + 1, scores, submissions: {}, ready: {}, resolvedRound: shared.round } });
-                        } else {
-                            transaction.update(battleRoomRef, { cardBattle: emptyBattleState() });
-                        }
-                    });
-                } else {
-                    const shared = battleRoom?.cardBattle;
-                    if (shared?.submissions?.P1 && shared?.submissions?.P2 && shared.ready?.P1 && shared.ready?.P2) {
-                        if (shared.round < 5) {
-                            const scores = { ...(shared.scores || { P1: 0, P2: 0 }) };
-                            if (shared.submissions.P1.value > shared.submissions.P2.value) scores.P1++;
-                            else if (shared.submissions.P2.value > shared.submissions.P1.value) scores.P2++;
-                            await updateSharedBattle({ 'round': shared.round + 1, 'scores': scores, 'submissions': {}, 'ready': {}, 'resolvedRound': shared.round });
-                        } else await updateSharedBattle({ 'round': 1, 'scores': { P1: 0, P2: 0 }, 'submissions': {}, 'ready': {}, 'resolvedRound': 0 });
-                    }
+                const shared = battleRoom?.cardBattle;
+                if (shared?.submissions?.P1 && shared?.submissions?.P2 && shared.ready?.P1 && shared.ready?.P2) {
+                    if (shared.round < 5) {
+                        const scores = { ...(shared.scores || { P1: 0, P2: 0 }) };
+                        if (shared.submissions.P1.value > shared.submissions.P2.value) scores.P1++;
+                        else if (shared.submissions.P2.value > shared.submissions.P1.value) scores.P2++;
+                        await updateSharedBattle({ 'round': shared.round + 1, 'scores': scores, 'submissions': {}, 'ready': {}, 'resolvedRound': shared.round });
+                    } else await updateSharedBattle({ 'round': 1, 'scores': { P1: 0, P2: 0 }, 'submissions': {}, 'ready': {}, 'resolvedRound': 0 });
                 }
             } catch (error) {
                 console.error('Could not advance card battle round:', error);
