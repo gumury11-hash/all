@@ -687,7 +687,7 @@
                         if (state.peerConnection === connection) state.peerConnection = null;
                         connection.close();
                     }
-                }, 15000);
+                }, 90000);
                 state.peerConnectTimeout = timeout;
                 connection.on('open', () => setPeerConnectionStatus('데이터 채널 연결됨. 방장의 참가 확인을 기다리는 중…'));
                 connection.on('error', error => {
@@ -721,7 +721,7 @@
 
         function startPeerIdWaitWindow() {
             clearPeerIdWait();
-            state.peerWaitEndsAt = Date.now() + 60000;
+            state.peerWaitEndsAt = Date.now() + 90000;
             const countdown = document.getElementById('peerIdWaitCountdown');
             const updateCountdown = () => {
                 const secondsLeft = Math.max(0, Math.ceil((state.peerWaitEndsAt - Date.now()) / 1000));
@@ -732,7 +732,7 @@
                 clearInterval(state.peerWaitInterval);
                 state.peerWaitInterval = null;
                 if (state.isHost && state.roomData?.status === 'waiting' && !state.peerConnection?.open) {
-                    countdown.textContent = '1분 동안 접속이 없습니다. 필요하면 Peer ID를 다시 발급하세요.';
+                    countdown.textContent = '1분 30초 동안 접속이 없습니다. 필요하면 Peer ID를 다시 발급하세요.';
                     document.getElementById('btnReissuePeerId').classList.remove('hidden');
                 }
             };
