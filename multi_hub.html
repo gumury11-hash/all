@@ -1141,10 +1141,7 @@
             document.getElementById('peerIdToJoin').value = state.peer.id;
             document.getElementById('btnCopyPeerId').classList.remove('hidden');
             document.getElementById('gamePeerIdText').textContent = state.peer.id;
-            document.getElementById('gamePeerIdPanel').classList.remove('hidden');
-            document.getElementById('gamePeerIdPanel').classList.add('flex');
             setPeerConnectionStatus('방을 만들었습니다. 내 ID를 복사해 상대에게 공유하세요.');
-            alert(`상대에게 이 Peer ID를 공유하세요:\n${state.peer.id}`);
 
             if (state.useFirebase && db) {
                 try {
@@ -1364,6 +1361,13 @@
         function renderGameState() {
             const room = state.roomData;
             if (!room) return;
+
+            const peerIdPanel = document.getElementById('gamePeerIdPanel');
+            const peerId = state.peer?.id || room.peerId;
+            const showPeerId = state.isHost && room.status === 'waiting' && !!peerId;
+            peerIdPanel.classList.toggle('hidden', !showPeerId);
+            peerIdPanel.classList.toggle('flex', showPeerId);
+            if (showPeerId) document.getElementById('gamePeerIdText').textContent = peerId;
 
             if (room.gameType === 'mathcards') {
                 renderMathGameState(room);
