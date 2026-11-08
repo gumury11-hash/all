@@ -222,12 +222,16 @@
                 </div>
             </div>
 
-            <div class="glass-panel p-4 rounded-2xl flex flex-col sm:flex-row gap-3 items-center">
-                <label for="peerIdToJoin" class="text-sm text-slate-300 font-semibold whitespace-nowrap">상대 Peer ID로 접속</label>
-                <input id="peerIdToJoin" type="text" placeholder="방장이 공유한 Peer ID" class="flex-1 w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-white text-sm">
-                <button onclick="connectToPeerRoom()" class="px-4 py-2 rounded-lg bg-neon-cyan text-slate-950 font-bold text-sm">접속</button>
-                <button id="btnCopyPeerId" onclick="copyPeerId()" class="hidden px-4 py-2 rounded-lg bg-slate-700 text-white font-bold text-sm">내 ID 복사</button>
-                <span id="peerConnectionStatus" class="w-full sm:w-auto text-xs text-slate-400" aria-live="polite"></span>
+            <div class="glass-panel p-4 rounded-2xl flex flex-col gap-3">
+                <label for="peerIdToJoin" class="text-sm text-slate-300 font-semibold">상대 Peer ID로 접속</label>
+                <div class="flex w-full min-w-0 flex-col sm:flex-row gap-3">
+                    <input id="peerIdToJoin" type="text" dir="ltr" spellcheck="false" autocapitalize="off" autocomplete="off" placeholder="방장이 공유한 Peer ID" class="block w-full min-w-0 flex-1 px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-white font-mono text-xs sm:text-sm tracking-tight overflow-x-auto whitespace-nowrap">
+                    <div class="flex shrink-0 gap-2">
+                        <button id="btnConnectPeerRoom" onclick="connectToPeerRoom()" class="flex-1 sm:flex-none px-4 py-2 rounded-lg bg-neon-cyan text-slate-950 font-bold text-sm">접속</button>
+                        <button id="btnCopyPeerId" onclick="copyPeerId()" class="hidden px-4 py-2 rounded-lg bg-slate-700 text-white font-bold text-sm">내 ID 복사</button>
+                    </div>
+                </div>
+                <span id="peerConnectionStatus" class="w-full text-xs text-slate-400 min-h-4" aria-live="polite"></span>
             </div>
 
             <!-- Room List Section -->
@@ -268,6 +272,8 @@
                 <div class="min-w-0">
                     <div class="text-[11px] text-slate-400">상대에게 공유할 방 Peer ID</div>
                     <code id="gamePeerIdText" class="block text-sm text-cyan-300 font-bold break-all"></code>
+                    <div id="peerIdWaitCountdown" class="mt-1 text-xs text-amber-300" aria-live="polite"></div>
+                    <button id="btnReissuePeerId" onclick="reissuePeerId()" class="hidden mt-2 px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs">ID 재발급</button>
                 </div>
                 <button id="btnCopyGamePeerId" onclick="copyPeerId()" class="shrink-0 px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-white font-bold text-sm">ID 복사</button>
             </div>
@@ -508,7 +514,10 @@
             useFirebase: false,
             broadcastChannel: null,
             peer: null,
-            peerConnection: null
+            peerConnection: null,
+            peerWaitInterval: null,
+            peerWaitEndsAt: 0,
+            peerConnectTimeout: null
         };
 
         const appId = typeof __app_id !== 'undefined' ? __app_id : '1v1-game-app-default';
@@ -600,6 +609,7 @@
             connection.on('open', () => {
                 document.getElementById('connectionBadge').textContent = 'PeerJS 연결됨';
                 if (state.isHost && state.roomData) {
+                    clearPeerIdWait();
                     state.roomData = { ...state.roomData, guestId: connection.peer, guestName: connection.metadata?.nickname || '상대', status: 'in-progress' };
                     state.rooms[state.roomData.id] = state.roomData;
                     renderGameState();
@@ -635,8 +645,10 @@
                     state.currentRoomId = room.id;
                     state.isHost = false;
                     state.roomData = room;
+                    clearTimeout(state.peerConnectTimeout);
+                    state.peerConnectTimeout = null;
                     setPeerConnectionStatus('상대 방에 연결했습니다. 게임을 시작합니다.');
-                    const connectButton = document.querySelector('[onclick="connectToPeerRoom()"]');
+                    const connectButton = document.getElementById('btnConnectPeerRoom');
                     if (connectButton) connectButton.disabled = false;
                     enterGameStage();
                     return;
@@ -655,7 +667,7 @@
                 setPeerConnectionStatus('이 ID는 내 방의 ID입니다. 상대 ID를 입력하세요.', true);
                 return;
             }
-            const button = document.querySelector('[onclick="connectToPeerRoom()"]');
+            const button = document.getElementById('btnConnectPeerRoom');
             button.disabled = true;
             setPeerConnectionStatus('Peer 서버에 연결 중…');
             if (!state.peer || state.peer.destroyed) state.peer = new Peer();
@@ -665,11 +677,16 @@
                 attachPeerConnection(connection);
                 const timeout = setTimeout(() => {
                     if (!state.currentRoomId) {
-                        setPeerConnectionStatus('응답이 없습니다. Peer ID와 방장 연결 상태를 확인하세요.', true);
+                        const iceState = connection.peerConnection?.iceConnectionState;
+                        const detail = iceState === 'failed' || iceState === 'disconnected'
+                            ? `WebRTC 연결이 ${iceState} 상태입니다. 다른 네트워크에서 시도하거나 TURN 서버 설정이 필요할 수 있습니다.`
+                            : `데이터 채널 응답이 없습니다${iceState ? ` (ICE: ${iceState})` : ''}. Peer ID와 방장 연결 상태를 확인하세요.`;
+                        setPeerConnectionStatus(detail, true);
                         button.disabled = false;
                     }
-                }, 12000);
-                connection.on('open', () => setPeerConnectionStatus('연결됨. 방 정보를 받는 중…'));
+                }, 60000);
+                state.peerConnectTimeout = timeout;
+                connection.on('open', () => setPeerConnectionStatus('데이터 채널 연결됨. 방 정보를 기다리는 중…'));
                 connection.on('error', error => {
                     clearTimeout(timeout);
                     setPeerConnectionStatus(`접속 실패: ${error.type || error.message || '연결 오류'}`, true);
@@ -688,6 +705,69 @@
                 button.disabled = false;
             });
             if (state.peer.open) connect(); else state.peer.once('open', connect);
+        };
+
+        function clearPeerIdWait() {
+            if (state.peerWaitInterval) clearInterval(state.peerWaitInterval);
+            state.peerWaitInterval = null;
+            state.peerWaitEndsAt = 0;
+            const countdown = document.getElementById('peerIdWaitCountdown');
+            if (countdown) countdown.textContent = '';
+            document.getElementById('btnReissuePeerId')?.classList.add('hidden');
+        }
+
+        function startPeerIdWaitWindow() {
+            clearPeerIdWait();
+            state.peerWaitEndsAt = Date.now() + 60000;
+            const countdown = document.getElementById('peerIdWaitCountdown');
+            const updateCountdown = () => {
+                const secondsLeft = Math.max(0, Math.ceil((state.peerWaitEndsAt - Date.now()) / 1000));
+                if (secondsLeft > 0) {
+                    countdown.textContent = `접속 대기 ${Math.floor(secondsLeft / 60)}:${String(secondsLeft % 60).padStart(2, '0')}`;
+                    return;
+                }
+                clearInterval(state.peerWaitInterval);
+                state.peerWaitInterval = null;
+                if (state.isHost && state.roomData?.status === 'waiting' && !state.peerConnection?.open) {
+                    countdown.textContent = '1분 동안 접속이 없습니다. 필요하면 Peer ID를 다시 발급하세요.';
+                    document.getElementById('btnReissuePeerId').classList.remove('hidden');
+                }
+            };
+            state.peerWaitInterval = setInterval(updateCountdown, 1000);
+            updateCountdown();
+        }
+
+        window.reissuePeerId = async function() {
+            if (!state.isHost || state.roomData?.status !== 'waiting' || state.peerConnection?.open) return;
+            const button = document.getElementById('btnReissuePeerId');
+            button.disabled = true;
+            button.textContent = '발급 중…';
+            clearPeerIdWait();
+            if (state.peer) state.peer.destroy();
+            state.peerConnection = null;
+            try {
+                const nextPeer = new Peer();
+                state.peer = nextPeer;
+                const peerId = await new Promise((resolve, reject) => {
+                    nextPeer.once('open', resolve);
+                    nextPeer.once('error', reject);
+                });
+                nextPeer.on('connection', attachPeerConnection);
+                state.roomData = { ...state.roomData, peerId, updatedAt: Date.now() };
+                state.rooms[state.roomData.id] = state.roomData;
+                localStorage.setItem('arena_rooms', JSON.stringify(state.rooms));
+                document.getElementById('peerIdToJoin').value = peerId;
+                document.getElementById('gamePeerIdText').textContent = peerId;
+                renderGameState();
+                startPeerIdWaitWindow();
+                setPeerConnectionStatus('새 Peer ID를 발급했습니다. 복사해 상대에게 다시 보내세요.');
+            } catch (error) {
+                setPeerConnectionStatus(`Peer ID 재발급 실패: ${error.type || error.message}`, true);
+                document.getElementById('btnReissuePeerId').classList.remove('hidden');
+            } finally {
+                button.disabled = false;
+                button.textContent = 'ID 재발급';
+            }
         };
 
         function setPeerConnectionStatus(message, isError = false) {
@@ -1138,6 +1218,7 @@
             state.currentRoomId = newRoomId;
             state.isHost = true;
             state.roomData = newRoom;
+            startPeerIdWaitWindow();
             document.getElementById('peerIdToJoin').value = state.peer.id;
             document.getElementById('btnCopyPeerId').classList.remove('hidden');
             document.getElementById('gamePeerIdText').textContent = state.peer.id;
