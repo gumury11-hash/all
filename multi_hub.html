@@ -613,7 +613,6 @@
                     state.roomData = { ...state.roomData, guestId: connection.peer, guestName: connection.metadata?.nickname || '상대', status: 'in-progress' };
                     state.rooms[state.roomData.id] = state.roomData;
                     renderGameState();
-                    connection.send({ type: 'ROOM_UPDATED', payload: state.roomData });
                 } else connection.send({ type: 'JOIN_REQUEST', payload: { nickname: state.nickname } });
             });
             connection.on('data', data => handlePeerMessage({ ...data, __peerMessage: true }));
@@ -675,18 +674,22 @@
                 setPeerConnectionStatus('상대 방에 접속 중…');
                 const connection = state.peer.connect(peerId, { reliable: true, metadata: { nickname: state.nickname } });
                 attachPeerConnection(connection);
+                let connectTimedOut = false;
                 const timeout = setTimeout(() => {
                     if (!state.currentRoomId) {
+                        connectTimedOut = true;
                         const iceState = connection.peerConnection?.iceConnectionState;
                         const detail = iceState === 'failed' || iceState === 'disconnected'
                             ? `WebRTC 연결이 ${iceState} 상태입니다. 다른 네트워크에서 시도하거나 TURN 서버 설정이 필요할 수 있습니다.`
-                            : `데이터 채널 응답이 없습니다${iceState ? ` (ICE: ${iceState})` : ''}. Peer ID와 방장 연결 상태를 확인하세요.`;
+                            : `상대 방에서 응답이 없습니다${iceState ? ` (ICE: ${iceState})` : ''}. Peer ID가 최신인지, 방장이 방을 열어 둔 상태인지 확인하세요.`;
                         setPeerConnectionStatus(detail, true);
                         button.disabled = false;
+                        if (state.peerConnection === connection) state.peerConnection = null;
+                        connection.close();
                     }
-                }, 60000);
+                }, 15000);
                 state.peerConnectTimeout = timeout;
-                connection.on('open', () => setPeerConnectionStatus('데이터 채널 연결됨. 방 정보를 기다리는 중…'));
+                connection.on('open', () => setPeerConnectionStatus('데이터 채널 연결됨. 방장의 참가 확인을 기다리는 중…'));
                 connection.on('error', error => {
                     clearTimeout(timeout);
                     setPeerConnectionStatus(`접속 실패: ${error.type || error.message || '연결 오류'}`, true);
@@ -694,7 +697,7 @@
                 });
                 connection.on('close', () => {
                     clearTimeout(timeout);
-                    if (!state.currentRoomId) {
+                    if (!state.currentRoomId && !connectTimedOut) {
                         setPeerConnectionStatus('상대가 연결을 종료했습니다.', true);
                         button.disabled = false;
                     }
