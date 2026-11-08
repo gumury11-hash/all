@@ -517,7 +517,8 @@
             peerConnection: null,
             peerWaitInterval: null,
             peerWaitEndsAt: 0,
-            peerConnectTimeout: null
+            peerConnectTimeout: null,
+            peerJoinRetryInterval: null
         };
 
         const appId = typeof __app_id !== 'undefined' ? __app_id : '1v1-game-app-default';
@@ -613,11 +614,21 @@
                     state.roomData = { ...state.roomData, guestId: connection.peer, guestName: connection.metadata?.nickname || '상대', status: 'in-progress' };
                     state.rooms[state.roomData.id] = state.roomData;
                     renderGameState();
-                } else connection.send({ type: 'JOIN_REQUEST', payload: { nickname: state.nickname } });
+                    connection.send({ type: 'ROOM_UPDATED', payload: state.roomData });
+                } else {
+                    const sendJoinRequest = () => {
+                        if (connection.open) connection.send({ type: 'JOIN_REQUEST', payload: { nickname: state.nickname } });
+                    };
+                    sendJoinRequest();
+                    if (state.peerJoinRetryInterval) clearInterval(state.peerJoinRetryInterval);
+                    state.peerJoinRetryInterval = setInterval(sendJoinRequest, 2000);
+                }
             });
             connection.on('data', data => handlePeerMessage({ ...data, __peerMessage: true }));
             connection.on('close', () => {
                 if (state.peerConnection === connection) state.peerConnection = null;
+                if (state.peerJoinRetryInterval) clearInterval(state.peerJoinRetryInterval);
+                state.peerJoinRetryInterval = null;
                 document.getElementById('connectionBadge').textContent = '연결 끊김';
             });
             connection.on('error', error => console.error('PeerJS data connection error:', error));
@@ -641,6 +652,8 @@
                 const room = msg.payload;
                 state.rooms[room.id] = room;
                 if (!state.currentRoomId) {
+                    if (state.peerJoinRetryInterval) clearInterval(state.peerJoinRetryInterval);
+                    state.peerJoinRetryInterval = null;
                     state.currentRoomId = room.id;
                     state.isHost = false;
                     state.roomData = room;
@@ -678,6 +691,8 @@
                 const timeout = setTimeout(() => {
                     if (!state.currentRoomId) {
                         connectTimedOut = true;
+                        if (state.peerJoinRetryInterval) clearInterval(state.peerJoinRetryInterval);
+                        state.peerJoinRetryInterval = null;
                         const iceState = connection.peerConnection?.iceConnectionState;
                         const detail = iceState === 'failed' || iceState === 'disconnected'
                             ? `WebRTC 연결이 ${iceState} 상태입니다. 다른 네트워크에서 시도하거나 TURN 서버 설정이 필요할 수 있습니다.`
@@ -692,6 +707,8 @@
                 connection.on('open', () => setPeerConnectionStatus('데이터 채널 연결됨. 방장의 참가 확인을 기다리는 중…'));
                 connection.on('error', error => {
                     clearTimeout(timeout);
+                    if (state.peerJoinRetryInterval) clearInterval(state.peerJoinRetryInterval);
+                    state.peerJoinRetryInterval = null;
                     setPeerConnectionStatus(`접속 실패: ${error.type || error.message || '연결 오류'}`, true);
                     button.disabled = false;
                 });
