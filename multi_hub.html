@@ -226,6 +226,8 @@
                 <label for="peerIdToJoin" class="text-sm text-slate-300 font-semibold whitespace-nowrap">상대 Peer ID로 접속</label>
                 <input id="peerIdToJoin" type="text" placeholder="방장이 공유한 Peer ID" class="flex-1 w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-white text-sm">
                 <button onclick="connectToPeerRoom()" class="px-4 py-2 rounded-lg bg-neon-cyan text-slate-950 font-bold text-sm">접속</button>
+                <button id="btnCopyPeerId" onclick="copyPeerId()" class="hidden px-4 py-2 rounded-lg bg-slate-700 text-white font-bold text-sm">내 ID 복사</button>
+                <span id="peerConnectionStatus" class="w-full sm:w-auto text-xs text-slate-400" aria-live="polite"></span>
             </div>
 
             <!-- Room List Section -->
@@ -261,6 +263,14 @@
 
         <!-- ================= STAGE 3: REAL-TIME 1v1 GAME ARENA ================= -->
         <section id="stageGame" class="w-full max-w-4xl hidden flex-col items-center gap-4">
+
+            <div id="gamePeerIdPanel" class="w-full glass-panel p-3 rounded-xl hidden items-center justify-between gap-3">
+                <div class="min-w-0">
+                    <div class="text-[11px] text-slate-400">상대에게 공유할 방 Peer ID</div>
+                    <code id="gamePeerIdText" class="block text-sm text-cyan-300 font-bold break-all"></code>
+                </div>
+                <button id="btnCopyGamePeerId" onclick="copyPeerId()" class="shrink-0 px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-white font-bold text-sm">ID 복사</button>
+            </div>
             
             <!-- Game Top Status Header -->
             <div class="w-full glass-panel p-4 rounded-2xl flex items-center justify-between border border-slate-700/60 shadow-xl">
@@ -625,6 +635,9 @@
                     state.currentRoomId = room.id;
                     state.isHost = false;
                     state.roomData = room;
+                    setPeerConnectionStatus('상대 방에 연결했습니다. 게임을 시작합니다.');
+                    const connectButton = document.querySelector('[onclick="connectToPeerRoom()"]');
+                    if (connectButton) connectButton.disabled = false;
                     enterGameStage();
                     return;
                 }
@@ -638,10 +651,62 @@
             const peerId = document.getElementById('peerIdToJoin').value.trim();
             if (!peerId) { alert('방장이 공유한 Peer ID를 입력하세요.'); return; }
             if (!window.Peer) { alert('PeerJS를 불러오지 못했습니다.'); return; }
-            if (!state.peer) state.peer = new Peer();
-            const connect = () => attachPeerConnection(state.peer.connect(peerId, { reliable: true, metadata: { nickname: state.nickname } }));
+            if (state.isHost && state.peer?.id === peerId) {
+                setPeerConnectionStatus('이 ID는 내 방의 ID입니다. 상대 ID를 입력하세요.', true);
+                return;
+            }
+            const button = document.querySelector('[onclick="connectToPeerRoom()"]');
+            button.disabled = true;
+            setPeerConnectionStatus('Peer 서버에 연결 중…');
+            if (!state.peer || state.peer.destroyed) state.peer = new Peer();
+            const connect = () => {
+                setPeerConnectionStatus('상대 방에 접속 중…');
+                const connection = state.peer.connect(peerId, { reliable: true, metadata: { nickname: state.nickname } });
+                attachPeerConnection(connection);
+                const timeout = setTimeout(() => {
+                    if (!state.currentRoomId) {
+                        setPeerConnectionStatus('응답이 없습니다. Peer ID와 방장 연결 상태를 확인하세요.', true);
+                        button.disabled = false;
+                    }
+                }, 12000);
+                connection.on('open', () => setPeerConnectionStatus('연결됨. 방 정보를 받는 중…'));
+                connection.on('error', error => {
+                    clearTimeout(timeout);
+                    setPeerConnectionStatus(`접속 실패: ${error.type || error.message || '연결 오류'}`, true);
+                    button.disabled = false;
+                });
+                connection.on('close', () => {
+                    clearTimeout(timeout);
+                    if (!state.currentRoomId) {
+                        setPeerConnectionStatus('상대가 연결을 종료했습니다.', true);
+                        button.disabled = false;
+                    }
+                });
+            };
+            state.peer.on('error', error => {
+                setPeerConnectionStatus(`Peer 오류: ${error.type || error.message}`, true);
+                button.disabled = false;
+            });
             if (state.peer.open) connect(); else state.peer.once('open', connect);
-            state.peer.on('error', error => alert(`Peer 접속 실패: ${error.type || error.message}`));
+        };
+
+        function setPeerConnectionStatus(message, isError = false) {
+            const status = document.getElementById('peerConnectionStatus');
+            status.textContent = message;
+            status.className = `w-full sm:w-auto text-xs ${isError ? 'text-rose-400' : 'text-emerald-300'}`;
+        }
+
+        window.copyPeerId = async function() {
+            const peerId = state.peer?.id;
+            if (!peerId) { setPeerConnectionStatus('복사할 Peer ID가 없습니다.', true); return; }
+            try {
+                await navigator.clipboard.writeText(peerId);
+                const gameButton = document.getElementById('btnCopyGamePeerId');
+                if (gameButton) gameButton.textContent = '복사됨';
+                setPeerConnectionStatus('내 Peer ID를 복사했습니다. 상대에게 공유하세요.');
+            } catch (error) {
+                window.prompt('Peer ID를 복사하세요.', peerId);
+            }
         };
 
         function initLocalEmulation() {
@@ -1074,6 +1139,11 @@
             state.isHost = true;
             state.roomData = newRoom;
             document.getElementById('peerIdToJoin').value = state.peer.id;
+            document.getElementById('btnCopyPeerId').classList.remove('hidden');
+            document.getElementById('gamePeerIdText').textContent = state.peer.id;
+            document.getElementById('gamePeerIdPanel').classList.remove('hidden');
+            document.getElementById('gamePeerIdPanel').classList.add('flex');
+            setPeerConnectionStatus('방을 만들었습니다. 내 ID를 복사해 상대에게 공유하세요.');
             alert(`상대에게 이 Peer ID를 공유하세요:\n${state.peer.id}`);
 
             if (state.useFirebase && db) {
