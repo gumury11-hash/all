@@ -3,2180 +3,1209 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>1v1 Real-Time Multiplayer Arena</title>
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- FontAwesome Icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <!-- Canvas Confetti for Victories -->
-    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
-    <script src="https://unpkg.com/peerjs@1.5.5/dist/peerjs.min.js"></script>
-
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    fontFamily: {
-                        sans: ['Plus Jakarta Sans', 'sans-serif'],
-                    },
-                    colors: {
-                        brand: {
-                            50: '#eef2ff',
-                            100: '#e0e7ff',
-                            500: '#6366f1',
-                            600: '#4f46e5',
-                            700: '#4338ca',
-                            900: '#312e81',
-                        },
-                        neon: {
-                            cyan: '#06b6d4',
-                            magenta: '#ec4899',
-                            emerald: '#10b981',
-                            amber: '#f59e0b'
-                        }
-                    },
-                    animation: {
-                        'pulse-glow': 'pulseGlow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-                        'float': 'float 3s ease-in-out infinite',
-                    },
-                    keyframes: {
-                        pulseGlow: {
-                            '0%, 100%': { opacity: 1, boxShadow: '0 0 15px rgba(99, 102, 241, 0.5)' },
-                            '50%': { opacity: 0.7, boxShadow: '0 0 5px rgba(99, 102, 241, 0.2)' },
-                        },
-                        float: {
-                            '0%, 100%': { transform: 'translateY(0px)' },
-                            '50%': { transform: 'translateY(-6px)' },
-                        }
-                    }
-                }
-            }
-        }
-    </script>
-
+    <title>카드 수식 대결</title>
     <style>
+        :root {
+            --bg-1: #020617;
+            --bg-2: #0f172a;
+            --bg-3: #111827;
+            --glass: rgba(15, 23, 42, 0.75);
+            --glass-card: rgba(30, 41, 59, 0.7);
+            --stroke: rgba(148, 163, 184, 0.15);
+            --brand: #6366f1;
+            --brand-strong: #4f46e5;
+            --cyan: #06b6d4;
+            --magenta: #ec4899;
+            --amber: #f59e0b;
+            --emerald: #10b981;
+            --rose: #fb7185;
+            --card-bg: #f8fafc;
+            --text: #f8fafc;
+            --muted: #cbd5e1;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+        }
+
         body {
+            font-family: 'Plus Jakarta Sans', 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
             background: radial-gradient(circle at 50% 0%, #1e1b4b 0%, #0f172a 60%, #020617 100%);
-            color: #f8fafc;
-            min-height: 100vh;
+            color: var(--text);
+            min-height: 100svh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 16px;
         }
 
-        /* Custom Scrollbars */
-        ::-webkit-scrollbar {
-            width: 6px;
-            height: 6px;
-        }
-        ::-webkit-scrollbar-track {
-            background: rgba(15, 23, 42, 0.6);
-        }
-        ::-webkit-scrollbar-thumb {
-            background: rgba(99, 102, 241, 0.4);
-            border-radius: 9999px;
-        }
-        ::-webkit-scrollbar-thumb:hover {
-            background: rgba(99, 102, 241, 0.8);
+        .page-shell {
+            width: min(100%, 980px);
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
         }
 
-        .glass-panel {
-            background: rgba(15, 23, 42, 0.75);
+        .arena-header {
+            width: 100%;
+            background: var(--glass);
+            border: 1px solid var(--stroke);
             backdrop-filter: blur(16px);
             -webkit-backdrop-filter: blur(16px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 22px;
+            padding: 18px 20px;
+            box-shadow: 0 20px 35px rgba(15, 23, 42, 0.28);
         }
 
-        .glass-card {
-            background: rgba(30, 41, 59, 0.6);
-            backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-        .glass-card:hover {
-            border-color: rgba(99, 102, 241, 0.4);
-            transform: translateY(-2px);
-            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 0 15px rgba(99, 102, 241, 0.2);
+        .arena-header-inner {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
         }
 
-        /* Gomoku / Board Styling */
-        .board-grid {
+        .brand-wrap {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .brand-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 16px;
+            background: linear-gradient(135deg, var(--brand), var(--cyan));
             display: grid;
-            gap: 1px;
-            background-color: #334155;
-            border: 2px solid #475569;
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+            place-items: center;
+            font-size: 1.2rem;
+            box-shadow: 0 10px 25px rgba(99,102,241,0.35);
         }
-        .board-cell {
-            background-color: #0f172a;
+
+        h1 {
+            font-size: clamp(1.2rem, 2vw, 1.8rem);
+            color: #fff;
+            letter-spacing: -0.05em;
+            margin-bottom: 4px;
+        }
+
+        .header-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.72rem;
+            font-weight: 700;
+            padding: 6px 10px;
+            border-radius: 999px;
+            background: rgba(99, 102, 241, 0.15);
+            color: #c7d2fe;
+            border: 1px solid rgba(99, 102, 241, 0.4);
+        }
+
+        .header-subtitle {
+            font-size: 0.76rem;
+            color: #cbd5e1;
+            opacity: 0.9;
+        }
+
+        .status-board {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            justify-content: center;
+            padding: 10px 14px;
+            border-radius: 16px;
+            background: rgba(15, 23, 42, 0.72);
+            border: 1px solid rgba(148, 163, 184, 0.14);
+            font-size: 0.8rem;
+            font-weight: 700;
+            color: #e2e8f0;
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
+        }
+
+        .score-pill {
+            padding: 8px 12px;
+            border-radius: 999px;
+            border: 1px solid rgba(148, 163, 184, 0.16);
+            background: rgba(15, 23, 42, 0.7);
+        }
+
+        .score-pill strong {
+            color: #fff;
+        }
+
+        .game-container {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+        }
+
+        .player-zone {
+            background: rgba(15, 23, 42, 0.72);
+            border: 1px solid rgba(148, 163, 184, 0.16);
+            border-radius: 20px;
+            padding: 18px;
             position: relative;
+            box-shadow: 0 14px 30px rgba(15, 23, 42, 0.26);
+        }
+
+        .player-zone.active {
+            border-color: rgba(99, 102, 241, 0.7);
+            box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.25), 0 20px 32px rgba(79, 70, 229, 0.12);
+        }
+
+        .player-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            gap: 8px;
+        }
+
+        .player-info h3 {
+            font-size: 1rem;
+            font-weight: 800;
+            color: #e2e8f0;
+        }
+
+        .player-status {
+            font-size: 0.72rem;
+            font-weight: 700;
+            padding: 6px 10px;
+            border-radius: 999px;
+            background: rgba(99, 102, 241, 0.12);
+            border: 1px solid rgba(99, 102, 241, 0.3);
+            color: #bfdbfe;
+        }
+
+        .hand-container {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            min-height: 104px;
+            margin-bottom: 15px;
+            padding: 12px;
+            background: rgba(15, 23, 42, 0.86);
+            border-radius: 14px;
+            border: 1px solid rgba(148, 163, 184, 0.1);
+        }
+
+        .slots-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            padding: 12px;
+            background: rgba(15, 23, 42, 0.7);
+            border-radius: 14px;
+            border: 1px solid rgba(148, 163, 184, 0.12);
+        }
+
+        .slot {
+            width: 76px;
+            height: 104px;
+            border: 2px dashed rgba(148, 163, 184, 0.35);
+            border-radius: 14px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            background: rgba(15, 23, 42, 0.9);
+            transition: all 0.2s ease;
+        }
+
+        .slot.operator-slot {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+        }
+
+        .slot.selected {
+            border-color: rgba(245, 158, 11, 0.8);
+            background: rgba(245, 158, 11, 0.12);
+        }
+
+        .card {
+            width: 62px;
+            height: 88px;
+            background: linear-gradient(180deg, #ffffff, #e2e8f0);
+            border-radius: 10px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 5px 6px;
+            color: #0f172a;
+            font-weight: 800;
             cursor: pointer;
-            transition: background-color 0.15s ease;
+            box-shadow: 0 10px 18px rgba(15, 23, 42, 0.2), inset 0 0 0 1px rgba(255,255,255,0.8);
+            transition: transform 0.15s, box-shadow 0.15s;
+            border: 1px solid rgba(15, 23, 42, 0.08);
         }
-        .board-cell:hover:not(.occupied) {
-            background-color: rgba(99, 102, 241, 0.2);
+
+        .card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 14px 22px rgba(99, 102, 241, 0.18);
         }
-        .math-select { width: 100%; min-width: 0; padding: .75rem .25rem; border-radius: .75rem; border: 1px solid #475569; background: #0f172a; color: #f8fafc; text-align: center; font-weight: 800; }
+
+        .card.red {
+            color: #dc2626;
+        }
+
+        .card.op-card {
+            background: linear-gradient(135deg, rgba(6,182,212,0.95), rgba(59,130,246,0.9));
+            color: white;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.2rem;
+            height: 52px;
+            width: 52px;
+            border-radius: 50%;
+            padding: 0;
+        }
+
+        .card.unary-card {
+            background: linear-gradient(135deg, rgba(168,85,247,0.95), rgba(236,72,153,0.9));
+        }
+
+        .attached-unary {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            background: rgba(168, 85, 247, 0.95);
+            color: white;
+            font-size: 0.68rem;
+            padding: 2px 6px;
+            border-radius: 999px;
+            border: 2px solid rgba(15, 23, 42, 0.7);
+            font-weight: 800;
+        }
+
+        button {
+            padding: 10px 18px;
+            border: none;
+            border-radius: 12px;
+            font-weight: 800;
+            cursor: pointer;
+            background: linear-gradient(135deg, var(--brand), var(--brand-strong));
+            color: white;
+            transition: transform 0.2s ease, opacity 0.2s ease;
+            box-shadow: 0 12px 20px rgba(79, 70, 229, 0.2);
+        }
+
+        button:hover:not(:disabled) {
+            transform: translateY(-1px);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .calc-preview {
+            text-align: center;
+            margin-top: 10px;
+            font-size: 1.02rem;
+            color: #dbeafe;
+            min-height: 26px;
+            font-weight: 700;
+        }
+
+        .deal-status {
+            text-align: center;
+            color: #cbd5e1;
+            margin-bottom: 12px;
+            font-size: 0.8rem;
+            line-height: 1.5;
+        }
+
+        .deck-picker {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(48px, 1fr));
+            gap: 7px;
+            padding: 12px;
+            background: rgba(15, 23, 42, 0.78);
+            border: 1px solid rgba(148, 163, 184, 0.12);
+            border-radius: 14px;
+            margin-bottom: 14px;
+        }
+
+        .deck-card-back {
+            position: relative;
+            overflow: hidden;
+            min-height: 68px;
+            padding: 4px;
+            border: 3px solid rgba(255,255,255,0.2);
+            outline: 1px solid rgba(148,163,184,0.3);
+            border-radius: 10px;
+            background-color: #172554;
+            background-image:
+                repeating-linear-gradient(45deg, transparent 0 4px, rgba(255,255,255,.78) 4px 5px, transparent 5px 9px),
+                repeating-linear-gradient(-45deg, transparent 0 4px, rgba(248,113,113,.9) 4px 5px, transparent 5px 9px),
+                linear-gradient(135deg, #1e3a8a, #172554 48%, #1e40af);
+            color: #fff;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 10px 18px rgba(15, 23, 42, 0.2);
+        }
+
+        .deck-card-back::before {
+            content: '';
+            position: absolute;
+            inset: 8px 5px;
+            border: 1px solid rgba(255,255,255,0.8);
+            border-radius: 6px;
+            box-shadow: inset 0 0 0 2px rgba(248,113,113,.85);
+            pointer-events: none;
+        }
+
+        .deck-card-back::after {
+            content: '✦';
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            width: 24px;
+            height: 24px;
+            display: grid;
+            place-items: center;
+            transform: translate(-50%, -50%) rotate(45deg);
+            border: 2px double rgba(255,255,255,0.9);
+            border-radius: 50%;
+            background: rgba(153, 27, 27, 0.9);
+            color: #fff;
+            font-size: 15px;
+            text-shadow: 0 0 3px rgba(252,165,165,0.75);
+            pointer-events: none;
+        }
+
+        .deck-card-back:hover { transform: translateY(-2px); }
+
+        .result-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 30;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            background: rgba(2, 6, 23, 0.72);
+            backdrop-filter: blur(8px);
+        }
+
+        .result-overlay.visible { display: flex; }
+
+        .result-dialog {
+            width: min(100%, 440px);
+            padding: 26px;
+            border: 1px solid rgba(251, 191, 36, 0.48);
+            border-radius: 22px;
+            background: rgba(15, 23, 42, 0.9);
+            text-align: center;
+            box-shadow: 0 22px 52px rgba(15, 23, 42, 0.42);
+        }
+
+        .result-dialog h2 {
+            margin-bottom: 12px;
+            color: #fbbf24;
+            font-size: 1.3rem;
+        }
+
+        .result-dialog p {
+            margin-bottom: 20px;
+            line-height: 1.7;
+            white-space: pre-line;
+            color: #e2e8f0;
+        }
+
+        @media (max-width: 640px) {
+            body {
+                padding: 12px;
+            }
+
+            .arena-header {
+                padding: 14px 16px;
+            }
+
+            .status-board {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .player-zone {
+                padding: 14px;
+            }
+
+            .player-info {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .card {
+                width: 54px;
+                height: 78px;
+                padding: 4px;
+                font-size: 0.9rem;
+            }
+
+            .slot {
+                width: 62px;
+                height: 90px;
+            }
+
+            .slot.operator-slot, .card.op-card {
+                width: 46px;
+                height: 46px;
+            }
+
+            .deck-picker {
+                grid-template-columns: repeat(auto-fill, minmax(40px, 1fr));
+                gap: 6px;
+                padding: 8px;
+            }
+        }
     </style>
 </head>
-<body class="font-sans antialiased selection:bg-brand-500 selection:text-white flex flex-col min-h-screen">
-
-    <!-- Top Navigation Header -->
-    <header class="glass-panel sticky top-0 z-40 w-full border-b border-slate-800 px-4 py-3">
-        <div class="max-w-7xl mx-auto flex items-center justify-between">
-            <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 to-neon-cyan flex items-center justify-center text-white shadow-lg shadow-brand-500/30">
-                    <i class="fa-solid fa-gamepad text-xl"></i>
+<body>
+    <div class="page-shell">
+        <header class="arena-header">
+            <div class="arena-header-inner">
+                <div class="brand-wrap">
+                    <div class="brand-icon">
+                        <i class="fa-solid fa-gamepad"></i>
+                    </div>
+                    <div>
+                        <h1>DUEL ARENA</h1>
+                        <div class="header-badge">MATH BATTLE</div>
+                    </div>
                 </div>
-                <div>
-                    <h1 class="font-extrabold text-lg tracking-tight bg-gradient-to-r from-white via-slate-200 to-slate-400 bg-clip-text text-transparent">
-                        DUEL ARENA <span class="text-xs px-2 py-0.5 rounded-full bg-brand-500/20 text-brand-300 font-semibold border border-brand-500/30">1v1 ONLINE</span>
-                    </h1>
-                    <p class="text-xs text-slate-400">실시간 1대1 오목 & 틱택토 대전 매칭</p>
+                <div class="status-board">
+                    <div class="score-pill">라운드: <strong><span id="round-num">1</span>/5</strong></div>
+                    <div class="score-pill">P1: <strong><span id="p1-score">0</span></strong></div>
+                    <div class="score-pill">P2: <strong><span id="p2-score">0</span></strong></div>
                 </div>
             </div>
+            <div class="header-subtitle" style="margin-top:10px;">실시간 수식 카드 대전</div>
+        </header>
 
-            <!-- Profile Info Header (Visible after login) -->
-            <div id="headerProfile" class="hidden items-center gap-3 bg-slate-900/60 px-3 py-1.5 rounded-full border border-slate-800">
-                <div class="w-8 h-8 rounded-full bg-slate-800 border border-brand-500/40 flex items-center justify-center font-bold text-xs text-brand-400" id="headerAvatar">
-                    ?
+        <div class="game-container">
+            <div class="player-zone" id="p2-zone">
+                <div class="player-info">
+                    <h3>AI (상대방)</h3>
+                    <span class="player-status" id="p2-status">대기 중</span>
                 </div>
-                <div class="flex flex-col">
-                    <span id="headerNickname" class="text-xs font-bold text-slate-200">닉네임</span>
-                    <span id="connectionBadge" class="text-[10px] text-emerald-400 flex items-center gap-1">
-                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> 온라인
-                    </span>
+                <div class="slots-container" id="p2-slots">
+                    <div class="slot num-slot"></div>
+                    <div class="slot operator-slot"></div>
+                    <div class="slot num-slot"></div>
+                    <div class="slot operator-slot"></div>
+                    <div class="slot num-slot"></div>
                 </div>
-                <button id="btnChangeNickname" title="닉네임 변경" class="ml-2 text-slate-400 hover:text-white text-xs p-1 transition-colors">
-                    <i class="fa-solid fa-right-from-bracket"></i>
-                </button>
+                <div class="calc-preview" id="p2-preview">결과: -</div>
+            </div>
+
+            <div class="player-zone active" id="p1-zone">
+                <div class="player-info">
+                    <h3>플레이어 1 (나)</h3>
+                    <span class="player-status" id="p1-status">카드배치 중</span>
+                </div>
+                <div class="deal-status" id="deal-status">숫자 카드 3장을 확인하고 보너스 카드를 뽑아주세요.</div>
+                <div class="hand-container" id="p1-hand"></div>
+                <div class="deck-picker" id="deck-picker"></div>
+                <div class="slots-container" id="p1-slots">
+                    <div class="slot num-slot" data-index="0"></div>
+                    <div class="slot operator-slot" data-index="1"></div>
+                    <div class="slot num-slot" data-index="2"></div>
+                    <div class="slot operator-slot" data-index="3"></div>
+                    <div class="slot num-slot" data-index="4"></div>
+                </div>
+                <div class="calc-preview" id="p1-preview">수식을 완결해주세요</div>
             </div>
         </div>
-    </header>
 
-    <!-- Main Container -->
-    <main class="flex-grow max-w-7xl w-full mx-auto p-4 md:p-6 flex flex-col justify-center items-center">
-
-        <!-- ================= STAGE 1: NICKNAME ENTRY ================= -->
-        <section id="stageNickname" class="w-full max-w-md my-auto">
-            <div class="glass-panel p-8 rounded-2xl shadow-2xl border border-slate-700/50 text-center relative overflow-hidden">
-                <div class="absolute -top-12 -left-12 w-32 h-32 bg-brand-500/10 rounded-full blur-2xl"></div>
-                <div class="absolute -bottom-12 -right-12 w-32 h-32 bg-neon-cyan/10 rounded-full blur-2xl"></div>
-
-                <div class="mb-6 inline-flex p-4 rounded-2xl bg-slate-900/80 border border-slate-700/80 shadow-inner">
-                    <i class="fa-solid fa-user-astronaut text-4xl text-brand-400 animate-float"></i>
-                </div>
-
-                <h2 class="text-2xl font-bold text-white mb-2">플레이어 닉네임 설정</h2>
-                <p class="text-sm text-slate-400 mb-6">대전에서 사용할 고유 닉네임을 입력하세요.<br><span class="text-xs text-slate-500">실시간으로 중복 검사를 진행합니다.</span></p>
-
-                <form id="formNickname" onsubmit="event.preventDefault(); proceedToLobby();" class="space-y-4">
-                    <div class="relative">
-                        <input type="text" id="inputNickname" maxlength="12" placeholder="닉네임 입력 (2~12자)"
-                            class="w-full px-4 py-3.5 bg-slate-900/90 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent transition-all pr-10 text-center font-semibold text-lg"
-                            autocomplete="off">
-                        <div id="nicknameStatusIcon" class="absolute right-3.5 top-1/2 -translate-y-1/2 hidden">
-                            <!-- Populated dynamically: check mark or spinner/cross -->
-                        </div>
-                    </div>
-
-                    <!-- Validation Feedback Text -->
-                    <div id="nicknameFeedback" class="text-xs min-h-[20px] font-medium text-slate-400 transition-all">
-                        닉네임을 입력해주세요.
-                    </div>
-
-                    <button type="submit" id="btnEnterLobby" disabled
-                        class="w-full py-3.5 px-6 rounded-xl font-bold text-white bg-slate-800 border border-slate-700 opacity-50 cursor-not-allowed transition-all duration-300 shadow-lg flex items-center justify-center gap-2">
-                        <span>로비 입장하기</span>
-                        <i class="fa-solid fa-arrow-right"></i>
-                    </button>
-                </form>
-            </div>
-        </section>
-
-        <!-- ================= STAGE 2: LOBBY & ROOM MANAGEMENT ================= -->
-        <section id="stageLobby" class="w-full max-w-5xl hidden flex-col gap-6">
-            <!-- Top Controls / Stats Banner -->
-            <div class="glass-panel p-5 rounded-2xl flex flex-col md:flex-row items-center justify-between gap-4">
-                <div class="flex items-center gap-4">
-                    <div class="w-12 h-12 rounded-xl bg-slate-800 border border-brand-500/30 flex items-center justify-center text-xl font-bold text-brand-400 shadow-inner" id="lobbyAvatar">
-                        ?
-                    </div>
-                    <div>
-                        <div class="flex items-center gap-2">
-                            <h3 class="text-xl font-bold text-white" id="lobbyNickname">Player</h3>
-                            <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">대기 중</span>
-                        </div>
-                        <p class="text-xs text-slate-400 mt-0.5">방을 생성하거나 상대방의 방에 참가하여 대전을 시작하세요.</p>
-                    </div>
-                </div>
-
-                <div class="flex items-center gap-3 w-full md:w-auto">
-                    <button id="btnOpenCreateModal" onclick="showCreateRoomModal()" class="flex-1 md:flex-none px-5 py-3 rounded-xl bg-gradient-to-r from-brand-600 to-brand-500 hover:from-brand-500 hover:to-brand-400 text-white font-bold shadow-lg shadow-brand-500/25 transition-all flex items-center justify-center gap-2">
-                        <i class="fa-solid fa-plus"></i>
-                        <span>방 만들기</span>
-                    </button>
-                    <button onclick="refreshRoomsManual()" class="px-3.5 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 hover:text-white transition-all" title="새로고침">
-                        <i class="fa-solid fa-rotate text-sm"></i>
-                    </button>
-                </div>
-            </div>
-
-            <div class="glass-panel p-4 rounded-2xl flex flex-col gap-3">
-                <label for="peerIdToJoin" class="text-sm text-slate-300 font-semibold">상대 Peer ID로 접속</label>
-                <div class="flex w-full min-w-0 flex-col sm:flex-row gap-3">
-                    <input id="peerIdToJoin" type="text" dir="ltr" spellcheck="false" autocapitalize="off" autocomplete="off" placeholder="방장이 공유한 Peer ID" class="block w-full min-w-0 flex-1 px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-white font-mono text-xs sm:text-sm tracking-tight overflow-x-auto whitespace-nowrap">
-                    <div class="flex shrink-0 gap-2">
-                        <button id="btnConnectPeerRoom" onclick="connectToPeerRoom()" class="flex-1 sm:flex-none px-4 py-2 rounded-lg bg-neon-cyan text-slate-950 font-bold text-sm">접속</button>
-                        <button id="btnCopyPeerId" onclick="copyPeerId()" class="hidden px-4 py-2 rounded-lg bg-slate-700 text-white font-bold text-sm">내 ID 복사</button>
-                    </div>
-                </div>
-                <span id="peerConnectionStatus" class="w-full text-xs text-slate-400 min-h-4" aria-live="polite"></span>
-                <details class="w-full rounded-lg border border-slate-700 bg-slate-950/50 p-3 text-xs">
-                    <summary class="cursor-pointer font-semibold text-slate-300">접속 상세 로그</summary>
-                    <div class="mt-2 flex gap-2">
-                        <button type="button" onclick="copyPeerConnectionLog()" class="rounded bg-slate-700 px-2 py-1 text-slate-100">로그 복사</button>
-                        <button type="button" onclick="clearPeerConnectionLog()" class="rounded bg-slate-800 px-2 py-1 text-slate-300">로그 지우기</button>
-                    </div>
-                    <pre id="peerConnectionLog" class="mt-2 max-h-40 overflow-auto whitespace-pre-wrap break-words text-[10px] text-slate-400" aria-live="polite">연결 로그가 여기에 표시됩니다.</pre>
-                </details>
-            </div>
-
-            <!-- Room List Section -->
-            <div class="space-y-4">
-                <div class="flex items-center justify-between">
-                    <h4 class="text-lg font-bold text-white flex items-center gap-2">
-                        <i class="fa-solid fa-list-check text-brand-400"></i>
-                        <span>대기 중인 매칭 목록</span>
-                        <span id="roomCountBadge" class="ml-2 px-2 py-0.5 rounded-md bg-slate-800 text-slate-400 text-xs font-bold">0</span>
-                    </h4>
-                    <span class="text-xs text-slate-400 flex items-center gap-1.5">
-                        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
-                        실시간 업데이트 중
-                    </span>
-                </div>
-
-                <!-- Rooms Grid -->
-                <div id="roomListGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    <!-- Empty State Placeholder -->
-                    <div id="emptyRoomState" class="col-span-full glass-panel p-12 rounded-2xl text-center space-y-3">
-                        <div class="w-16 h-16 rounded-full bg-slate-800/80 mx-auto flex items-center justify-center text-slate-500 text-2xl">
-                            <i class="fa-solid fa-ghost"></i>
-                        </div>
-                        <h5 class="text-base font-bold text-slate-300">개설된 방이 없습니다</h5>
-                        <p class="text-xs text-slate-400 max-w-sm mx-auto">새로운 방을 만들어 도전자를 기다리거나 잠시 대기해보세요.</p>
-                        <button onclick="showCreateRoomModal()" class="mt-2 px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-brand-400 border border-slate-700 text-xs font-semibold transition-all">
-                            지금 방 만들기
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- ================= STAGE 3: REAL-TIME 1v1 GAME ARENA ================= -->
-        <section id="stageGame" class="w-full max-w-4xl hidden flex-col items-center gap-4">
-
-            <div id="gamePeerIdPanel" class="w-full glass-panel p-3 rounded-xl hidden items-center justify-between gap-3">
-                <div class="min-w-0">
-                    <div class="text-[11px] text-slate-400">상대에게 공유할 방 Peer ID</div>
-                    <code id="gamePeerIdText" class="block text-sm text-cyan-300 font-bold break-all"></code>
-                    <div id="peerIdWaitCountdown" class="mt-1 text-xs text-amber-300" aria-live="polite"></div>
-                    <button id="btnReissuePeerId" onclick="reissuePeerId()" class="hidden mt-2 px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs">ID 재발급</button>
-                </div>
-                <button id="btnCopyGamePeerId" onclick="copyPeerId()" class="shrink-0 px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-white font-bold text-sm">ID 복사</button>
-            </div>
-            
-            <!-- Game Top Status Header -->
-            <div class="w-full glass-panel p-4 rounded-2xl flex items-center justify-between border border-slate-700/60 shadow-xl">
-                <!-- Player 1 (Host) Card -->
-                <div id="p1Card" class="flex items-center gap-3 p-2 rounded-xl transition-all border border-transparent">
-                    <div class="relative">
-                        <div class="w-12 h-12 rounded-xl bg-brand-900/60 border-2 border-brand-500 flex items-center justify-center font-extrabold text-brand-300 text-lg shadow-lg">
-                            <i class="fa-solid fa-xmark text-2xl"></i>
-                        </div>
-                        <span class="absolute -bottom-1 -right-1 px-1.5 py-0.5 rounded bg-brand-600 text-[10px] font-black text-white">P1</span>
-                    </div>
-                    <div class="flex flex-col">
-                        <span id="p1Name" class="font-bold text-sm text-white max-w-[100px] truncate">방장</span>
-                        <span id="p1Role" class="text-[11px] text-brand-400 font-semibold">흑돌 (X)</span>
-                    </div>
-                </div>
-
-                <!-- Match Center Status & Timer -->
-                <div class="flex flex-col items-center justify-center px-4 py-1 text-center">
-                    <div id="gameStatusTag" class="px-3 py-1 rounded-full text-xs font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20 mb-1 flex items-center gap-1.5">
-                        <i class="fa-solid fa-spinner animate-spin"></i>
-                        <span>상대방 대기 중</span>
-                    </div>
-
-                    <!-- Turn Timer Bar -->
-                    <div class="flex items-center gap-2">
-                        <i class="fa-regular fa-clock text-xs text-slate-400"></i>
-                        <span id="timerText" class="font-mono text-xl font-extrabold text-white">30</span>
-                        <span class="text-xs text-slate-400">초</span>
-                    </div>
-                </div>
-
-                <!-- Player 2 (Challenger) Card -->
-                <div id="p2Card" class="flex items-center gap-3 p-2 rounded-xl transition-all border border-transparent flex-row-reverse text-right">
-                    <div class="relative">
-                        <div class="w-12 h-12 rounded-xl bg-neon-cyan/10 border-2 border-neon-cyan flex items-center justify-center font-extrabold text-neon-cyan text-lg shadow-lg">
-                            <i class="fa-regular fa-circle text-xl"></i>
-                        </div>
-                        <span class="absolute -bottom-1 -left-1 px-1.5 py-0.5 rounded bg-neon-cyan text-[10px] font-black text-slate-900">P2</span>
-                    </div>
-                    <div class="flex flex-col">
-                        <span id="p2Name" class="font-bold text-sm text-slate-400 max-w-[100px] truncate">대기 중...</span>
-                        <span id="p2Role" class="text-[11px] text-neon-cyan font-semibold">백돌 (O)</span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Game Control Bar (Mode Indicator & Leave Button) -->
-            <div class="w-full flex items-center justify-between px-2 text-xs text-slate-400">
-                <div class="flex items-center gap-2">
-                    <span class="font-semibold text-slate-300">게임 모드:</span>
-                    <span id="gameModeDisplay" class="px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700 font-medium">오목 (5-in-a-row)</span>
-                </div>
-                <button onclick="confirmLeaveRoom()" class="text-rose-400 hover:text-rose-300 hover:underline flex items-center gap-1 font-semibold transition-colors">
-                    <i class="fa-solid fa-door-open"></i> 방 나가기
-                </button>
-                <button id="btnDeleteCurrentRoom" onclick="deleteCurrentRoom()" class="hidden text-rose-300 hover:text-rose-200 flex items-center gap-1 font-bold transition-colors">
-                    <i class="fa-solid fa-trash-can"></i> 방 삭제
-                </button>
-            </div>
-
-            <!-- Board Frame Container -->
-            <div class="relative w-full flex justify-center items-center my-2">
-                <!-- Overlay message for waiting/finished states -->
-                <div id="boardOverlay" class="absolute inset-0 z-20 bg-slate-950/80 backdrop-blur-md rounded-2xl flex flex-col items-center justify-center gap-4 p-6 text-center transition-all">
-                    <div id="boardOverlayIcon" class="w-16 h-16 rounded-2xl bg-brand-500/20 text-brand-400 border border-brand-500/40 flex items-center justify-center text-3xl animate-bounce">
-                        <i class="fa-solid fa-hourglass-half"></i>
-                    </div>
-                    <div>
-                        <h3 id="boardOverlayTitle" class="text-xl font-bold text-white">도전자를 기다리는 중...</h3>
-                        <p id="boardOverlaySubtitle" class="text-xs text-slate-400 mt-1 max-w-xs">다른 플레이어가 로비에서 이 방에 참여하면 즉시 대전이 시작됩니다.</p>
-                    </div>
-
-                    <!-- Overlay Action Buttons -->
-                    <div id="boardOverlayActions" class="flex items-center gap-3 mt-2 hidden">
-                        <button id="btnRematch" onclick="requestRematch()" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-brand-600 to-brand-500 hover:from-brand-500 hover:to-brand-400 text-white font-bold text-sm shadow-lg transition-all flex items-center gap-2">
-                            <i class="fa-solid fa-rotate-right"></i> 다시 하기
-                        </button>
-                        <button onclick="leaveRoom()" class="px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 font-bold text-sm transition-all">
-                            로비로 돌아가기
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Interactive Game Board -->
-                <div class="glass-panel p-3 md:p-5 rounded-2xl border border-slate-700/80 shadow-2xl">
-                    <div id="gameBoard" class="board-grid rounded-lg overflow-hidden mx-auto">
-                        <!-- Dynamic cells injected via JS -->
-                    </div>
-                </div>
-            </div>
-
-            <!-- Quick Reaction Chat & Interaction -->
-            <section id="mathGameView" class="hidden w-full glass-panel p-5 md:p-7 rounded-2xl border border-amber-500/30 shadow-2xl">
-                <div class="flex flex-wrap items-center justify-between gap-3 mb-5">
-                    <div><h2 class="text-xl font-extrabold text-amber-300">수식 카드 대전</h2><p class="text-xs text-slate-400 mt-1">각자 식을 완성해 제출하면 두 결과가 공개됩니다.</p></div>
-                    <div class="text-sm font-bold text-slate-200"><span id="mathRound">1</span>/5 라운드 · <span id="mathScore">0 : 0</span></div>
-                    <div class="flex items-center gap-2"><button id="btnDeleteMathRoom" onclick="deleteCurrentRoom()" class="hidden px-3 py-2 rounded-lg bg-rose-500/15 text-rose-200 border border-rose-500/30 text-xs font-bold">방 삭제</button><button onclick="confirmLeaveRoom()" class="px-3 py-2 rounded-lg bg-slate-800 text-slate-300 border border-slate-700 text-xs font-bold">방 나가기</button></div>
-                </div>
-                <div class="grid grid-cols-2 gap-3 mb-5 text-center">
-                    <div class="rounded-xl bg-slate-900/70 p-3"><div id="mathP1Name" class="text-xs text-slate-400">P1</div><div id="mathP1Result" class="text-lg font-black text-brand-300">미제출</div></div>
-                    <div class="rounded-xl bg-slate-900/70 p-3"><div id="mathP2Name" class="text-xs text-slate-400">P2</div><div id="mathP2Result" class="text-lg font-black text-cyan-300">미제출</div></div>
-                </div>
-                <div id="mathWaiting" class="hidden mb-4 rounded-lg bg-emerald-500/10 border border-emerald-500/30 p-3 text-center text-sm text-emerald-300">제출 완료! 상대가 식을 완성할 때까지 기다리는 중입니다.</div>
-                <div id="mathBuilder" class="space-y-4">
-                    <p class="text-center text-sm text-slate-300">내 숫자 카드: <span id="mathNumberCards" class="font-black text-amber-300"></span></p>
-                    <div class="grid grid-cols-5 gap-2 items-center text-center">
-                        <select id="mathN0" class="math-select"></select><select id="mathOp0" class="math-select"><option>+</option><option>-</option><option>*</option><option>/</option></select>
-                        <select id="mathN1" class="math-select"></select><select id="mathOp1" class="math-select"><option>+</option><option>-</option><option>*</option><option>/</option></select><select id="mathN2" class="math-select"></select>
-                    </div>
-                    <div class="text-center"><div id="mathPreview" class="text-2xl font-black text-amber-300 mb-3">결과: -</div><button id="btnSubmitMath" onclick="submitMathExpression()" class="px-6 py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold">식 제출</button></div>
-                </div>
-                <div id="mathRoundActions" class="hidden text-center mt-4"><p id="mathRoundMessage" class="text-sm font-bold mb-3"></p><button id="btnNextMathRound" onclick="advanceMathRound()" class="px-5 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-bold">다음 라운드</button></div>
+        <div class="result-overlay" id="result-overlay" aria-hidden="true">
+            <section class="result-dialog" role="dialog" aria-modal="true" aria-labelledby="result-title">
+                <h2 id="result-title"></h2>
+                <p id="result-detail"></p>
+                <button id="result-action" onclick="confirmResult()">결과 확인</button>
             </section>
-
-            <!-- Quick Reaction Chat & Interaction -->
-            <div class="w-full glass-panel p-3 rounded-xl flex items-center justify-between gap-2 border border-slate-800">
-                <span class="text-xs text-slate-400 font-semibold px-2 shrink-0">빠른 반응:</span>
-                <div class="flex items-center gap-2 overflow-x-auto py-1 max-w-full">
-                    <button onclick="sendQuickEmote('🔥')" class="px-2.5 py-1 rounded-lg bg-slate-800/80 hover:bg-slate-700 border border-slate-700 text-sm transition-all">🔥 승부다!</button>
-                    <button onclick="sendQuickEmote('👏')" class="px-2.5 py-1 rounded-lg bg-slate-800/80 hover:bg-slate-700 border border-slate-700 text-sm transition-all">👏 나이스</button>
-                    <button onclick="sendQuickEmote('🤔')" class="px-2.5 py-1 rounded-lg bg-slate-800/80 hover:bg-slate-700 border border-slate-700 text-sm transition-all">🤔 장고 중...</button>
-                    <button onclick="sendQuickEmote('😅')" class="px-2.5 py-1 rounded-lg bg-slate-800/80 hover:bg-slate-700 border border-slate-700 text-sm transition-all">😅 실수했네</button>
-                    <button onclick="sendQuickEmote('👍')" class="px-2.5 py-1 rounded-lg bg-slate-800/80 hover:bg-slate-700 border border-slate-700 text-sm transition-all">👍 좋은 수</button>
-                </div>
-            </div>
-
-            <!-- Chat / Reaction Toast Overlay -->
-            <div id="chatToast" class="fixed bottom-6 right-6 z-50 transform translate-y-10 opacity-0 transition-all duration-300 pointer-events-none">
-                <div class="glass-panel px-4 py-3 rounded-2xl shadow-2xl border border-brand-500/40 flex items-center gap-3">
-                    <span id="chatToastAvatar" class="w-8 h-8 rounded-full bg-brand-600 text-white flex items-center justify-center font-bold text-xs">P</span>
-                    <div>
-                        <p id="chatToastUser" class="text-[10px] font-bold text-slate-400">Player</p>
-                        <p id="chatToastText" class="text-sm font-bold text-white">메시지 내용</p>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-    </main>
-
-    <!-- Footer -->
-    <footer class="w-full border-t border-slate-800/80 py-4 text-center text-xs text-slate-500 mt-auto">
-        <p>1v1 Online Multiplayer Matching Hub &copy; 2026. Powered by Broadcast Sync & Real-time State.</p>
-    </footer>
-
-    <div id="nicknameTakeoverModal" class="fixed inset-0 z-[70] hidden items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4">
-        <div class="glass-panel w-full max-w-sm rounded-2xl border border-amber-500/40 p-6 text-center shadow-2xl">
-            <div class="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-amber-500/15 text-amber-300"><i class="fa-solid fa-user-shield text-xl"></i></div>
-            <h2 class="text-lg font-extrabold text-white">같은 닉네임 접속 요청</h2>
-            <p id="nicknameTakeoverMessage" class="my-3 text-sm text-slate-300"></p>
-            <p id="nicknameTakeoverCountdown" class="mb-4 text-xs font-bold text-amber-300"></p>
-            <button onclick="blockNicknameTakeover()" class="w-full rounded-xl bg-rose-600 px-4 py-3 font-bold text-white hover:bg-rose-500">5초 내 접속 차단</button>
         </div>
     </div>
 
-    <!-- Modal: Create Room Dialog -->
-    <div id="modalCreateRoom" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm hidden items-center justify-center p-4">
-        <div class="glass-panel w-full max-w-md p-6 rounded-2xl border border-slate-700 shadow-2xl space-y-5 animate-float-none">
-            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
-                <h3 class="text-lg font-bold text-white flex items-center gap-2">
-                    <i class="fa-solid fa-square-plus text-brand-400"></i>
-                    <span>새 게임 방 개설</span>
-                </h3>
-                <button onclick="hideCreateRoomModal()" class="text-slate-400 hover:text-white p-1">
-                    <i class="fa-solid fa-xmark text-lg"></i>
-                </button>
-            </div>
-
-            <div class="space-y-4">
-                <div>
-                    <label class="block text-xs font-semibold text-slate-300 mb-1.5">방 제목</label>
-                    <input type="text" id="inputRoomTitle" maxlength="25" placeholder="예: 즐겁게 오목 한판 하실 분!"
-                        class="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-brand-500">
-                </div>
-
-                <div>
-                    <label class="block text-xs font-semibold text-slate-300 mb-1.5">게임 종류</label>
-                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                        <label class="flex flex-col p-3 rounded-xl border border-slate-700 bg-slate-900/60 cursor-pointer hover:border-brand-500/50 has-[:checked]:border-brand-500 has-[:checked]:bg-brand-500/10">
-                            <div class="flex items-center justify-between mb-1">
-                                <span class="font-bold text-sm text-white">오목 (Gomoku)</span>
-                                <input type="radio" name="gameType" value="gomoku" checked class="accent-brand-500">
-                            </div>
-                            <span class="text-[11px] text-slate-400">10x10 판, 5목 완성 승리</span>
-                        </label>
-
-                        <label class="flex flex-col p-3 rounded-xl border border-slate-700 bg-slate-900/60 cursor-pointer hover:border-brand-500/50 has-[:checked]:border-brand-500 has-[:checked]:bg-brand-500/10">
-                            <div class="flex items-center justify-between mb-1">
-                                <span class="font-bold text-sm text-white">틱택토 (Classic)</span>
-                                <input type="radio" name="gameType" value="tictactoe" class="accent-brand-500">
-                            </div>
-                            <span class="text-[11px] text-slate-400">3x3 판, 빠른 3목 승리</span>
-                        </label>
-                        <label class="flex flex-col p-3 rounded-xl border border-slate-700 bg-slate-900/60 cursor-pointer hover:border-brand-500/50 has-[:checked]:border-brand-500 has-[:checked]:bg-brand-500/10">
-                            <div class="flex items-center justify-between mb-1"><span class="font-bold text-sm text-white">수식 카드 대전</span><input type="radio" name="gameType" value="mathcards" class="accent-brand-500"></div>
-                            <span class="text-[11px] text-slate-400">각자 식을 만들어 5라운드 대결</span>
-                        </label>
-                    </div>
-                </div>
-            </div>
-
-            <div class="flex items-center gap-3 pt-2">
-                <button onclick="hideCreateRoomModal()" class="flex-1 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-sm border border-slate-700">
-                    취소
-                </button>
-                <button onclick="submitCreateRoom()" class="flex-1 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-bold text-sm shadow-lg shadow-brand-500/30">
-                    방 생성하기
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <!-- ================= JAVASCRIPT LOGIC & STATE MANAGEMENT ================= -->
+    <script src="https://unpkg.com/peerjs@1.5.5/dist/peerjs.min.js"></script>
     <script type="module">
-        // Global State
-        const state = {
-            userId: null,
-            sessionId: (crypto.randomUUID ? crypto.randomUUID() : `session_${Date.now()}_${Math.random().toString(36).slice(2)}`),
-            nickname: '',
-            currentRoomId: null,
-            isHost: false,
-            roomData: null,
-            timerInterval: null,
-            timerSeconds: 30,
-            activeNicknames: new Set(),
-            nicknameOwners: {},
-            pendingNicknameRequests: new Map(),
-            activeNicknameRequestId: null,
-            nicknameRequestTimer: null,
-            isConnecting: false,
-            hasRegisteredNickname: false,
-            nicknameSessionCheckAfter: 0,
-            rooms: {},
-            useFirebase: false,
-            broadcastChannel: null,
-            peer: null,
-            peerConnection: null,
-            peerWaitInterval: null,
-            peerWaitEndsAt: 0,
-            peerConnectTimeout: null,
-            peerJoinRetryInterval: null,
-            peerLogStartedAt: 0,
-            peerLogEntries: []
+
+        const battleParams = new URLSearchParams(window.location.search);
+        const battleContext = {
+            roomId: battleParams.get('roomId'),
+            role: battleParams.get('role') === 'P2' ? 'P2' : 'P1',
+            nickname: battleParams.get('nickname') || '',
+            peerId: battleParams.get('peerId') || ''
         };
+        let battlePeer = null;
+        let battleConnection = null;
+        let battleRoom = null;
+        let battleSyncReady = false;
+        let lastShownRound = 0;
+        let advanceInProgress = false;
 
-        const appId = typeof __app_id !== 'undefined' ? __app_id : '1v1-game-app-default';
-        let db = null;
-        let auth = null;
+        const emptyBattleState = () => ({ round: 1, scores: { P1: 0, P2: 0 }, submissions: {}, ready: {}, resolvedRound: 0 });
 
-        function createPeer() {
-            const configuredIceServers = Array.isArray(window.ARENA_ICE_SERVERS) ? window.ARENA_ICE_SERVERS : [];
-            const iceServers = configuredIceServers.length
-                ? configuredIceServers
-                : [{ urls: 'stun:stun.l.google.com:19302' }];
-            return new Peer(undefined, { config: { iceServers } });
+        function applyBattleState(shared) {
+            if (!shared || !battleSyncReady) return;
+            currentRound = shared.round || 1;
+            document.getElementById('round-num').textContent = currentRound;
+            p1Score = shared.scores?.P1 || 0;
+            p2Score = shared.scores?.P2 || 0;
+            updateScoreBoard();
+
+            const ownSubmission = shared.submissions?.[battleContext.role];
+            const otherRole = battleContext.role === 'P1' ? 'P2' : 'P1';
+            const otherSubmission = shared.submissions?.[otherRole];
+            const displayScores = { ...(shared.scores || { P1: 0, P2: 0 }) };
+            if (ownSubmission && otherSubmission && shared.resolvedRound !== currentRound) {
+                const p1Value = shared.submissions.P1.value;
+                const p2Value = shared.submissions.P2.value;
+                if (p1Value > p2Value) displayScores.P1++;
+                else if (p2Value > p1Value) displayScores.P2++;
+            }
+            p1Score = displayScores.P1;
+            p2Score = displayScores.P2;
+            updateScoreBoard();
+            document.getElementById('p2-status').textContent = otherSubmission ? '제출 완료' : '수식 작성 중';
+            document.getElementById('p2-preview').textContent = otherSubmission ? `상대 결과: ${otherSubmission.value}` : '상대 결과를 기다리는 중';
+
+            if (ownSubmission) {
+                turnResolved = true;
+                document.getElementById('p1-status').textContent = '제출 완료';
+                document.getElementById('p1-preview').textContent = `내 결과: ${ownSubmission.value}`;
+                document.getElementById('deal-status').textContent = otherSubmission ? '두 플레이어가 제출했습니다.' : '제출 완료! 상대가 수식을 완성할 때까지 기다리는 중입니다.';
+                document.getElementById('deck-picker').style.pointerEvents = 'none';
+                document.getElementById('p1-hand').style.pointerEvents = 'none';
+                document.getElementById('p1-slots').style.pointerEvents = 'none';
+            }
+
+            if (ownSubmission && otherSubmission && lastShownRound !== currentRound) {
+                lastShownRound = currentRound;
+                const myValue = ownSubmission.value;
+                const otherValue = otherSubmission.value;
+                const result = myValue > otherValue ? '승리' : myValue < otherValue ? '패배' : '무승부';
+                const finalRound = currentRound === 5;
+                document.getElementById('result-title').textContent = finalRound ? '5라운드 완료' : `${currentRound}라운드 결과: ${result}`;
+                document.getElementById('result-detail').textContent = `내 결과: ${myValue} : 상대 결과: ${otherValue}\n현재 점수: ${p1Score} : ${p2Score}`;
+                document.getElementById('result-action').textContent = finalRound ? '새 게임 시작' : (shared.ready?.[battleContext.role] ? '상대 확인 대기 중' : '다음 라운드');
+                document.getElementById('result-action').disabled = !!shared.ready?.[battleContext.role];
+                const overlay = document.getElementById('result-overlay');
+                overlay.classList.add('visible');
+                overlay.setAttribute('aria-hidden', 'false');
+            }
+
+            if (ownSubmission && otherSubmission && shared.ready?.[battleContext.role]) {
+                document.getElementById('result-action').disabled = true;
+                document.getElementById('result-action').textContent = '상대 확인 대기 중';
+            }
+
+            if (!ownSubmission && currentRound !== Number(document.getElementById('round-num').textContent)) {
+                lastShownRound = 0;
+                startRound();
+            }
+
+            if (shared.ready?.P1 && shared.ready?.P2) advanceSharedRoundIfReady();
         }
 
-        // BroadcastChannel initialization for instant multi-tab sync fallback
-        if ('BroadcastChannel' in window) {
-            state.broadcastChannel = new BroadcastChannel('duel_arena_sync_channel');
-            state.broadcastChannel.onmessage = (event) => {
-                handleBroadcastMessage(event.data);
-            };
-        }
-
-        // Initialize Firebase if config provided, otherwise fallback to local sync
-        async function initBackend() {
-            state.userId = state.sessionId;
-            state.useFirebase = false;
-            initLocalEmulation();
-        }
-
-        // --- LOCAL BROADCAST CHANNEL EMULATION STORAGE ---
-        function broadcastStateUpdate(type, payload) {
-            if (state.peerConnection && state.peerConnection.open) {
-                state.peerConnection.send({ type, payload });
-            }
-            if (state.broadcastChannel) {
-                state.broadcastChannel.postMessage({ type, payload, senderId: state.sessionId || state.userId });
-            }
-            // Sync with LocalStorage for persistent cross-tab store
-            if (type === 'SYNC_ROOMS') {
-                localStorage.setItem('arena_rooms', JSON.stringify(payload));
-            } else if (type === 'SYNC_NICKNAMES') {
-                localStorage.setItem('arena_nicknames', JSON.stringify(Array.from(payload)));
-            }
-        }
-
-        function handleBroadcastMessage(msg) {
-            if (msg?.__peerMessage) {
-                msg = { ...msg, senderId: '__peer__' };
-                handlePeerMessage(msg);
-                return;
-            }
-            if (!msg || msg.senderId === state.sessionId || msg.senderId === state.userId) return;
-
-            if (msg.type === 'PING_NICKNAME_CHECK') {
-                // Another tab is querying active nicknames
-                announceMyPresence();
-            } else if (msg.type === 'PONG_NICKNAME') {
-                if (msg.payload.nickname) {
-                    const normalized = msg.payload.nickname.toLowerCase();
-                    state.activeNicknames.add(normalized);
-                    state.nicknameOwners[normalized] = { sessionId: msg.payload.sessionId || msg.senderId, userId: msg.payload.userId || msg.senderId };
-                    validateNicknameInput();
-                }
-            } else if (msg.type === 'NICKNAME_TAKEOVER_REQUEST' && msg.payload.targetId === state.sessionId && state.nickname.toLowerCase() === msg.payload.nickname.toLowerCase()) {
-                showNicknameTakeoverRequest(msg.payload);
-            } else if (msg.type === 'NICKNAME_TAKEOVER_BLOCKED' && msg.payload.requesterId === state.sessionId && msg.payload.requestId) {
-                window.dispatchEvent(new CustomEvent(`nickname-request-${msg.payload.requestId}`, { detail: 'blocked' }));
-            } else if (msg.type === 'NICKNAME_TAKEOVER_GRANTED' && msg.payload.targetId === state.sessionId) {
-                handleSessionReplacement();
-            } else if (msg.type === 'SYNC_NICKNAMES') {
-                state.activeNicknames = new Set(msg.payload || []);
-                validateNicknameInput();
-            } else if (msg.type === 'SYNC_ROOMS') {
-                state.rooms = msg.payload || {};
-                renderRoomList();
-                checkActiveRoomSync();
-            } else if (msg.type === 'ROOM_UPDATED') {
-                const updatedRoom = msg.payload;
-                if (updatedRoom) {
-                    state.rooms[updatedRoom.id] = updatedRoom;
-                    renderRoomList();
-                    if (state.currentRoomId === updatedRoom.id) {
-                        state.roomData = updatedRoom;
-                        checkActiveRoomSync();
-                    }
-                }
-            } else if (msg.type === 'CHAT_EMOTE') {
-                if (msg.payload.roomId === state.currentRoomId) {
-                    showChatToast(msg.payload.user, msg.payload.text);
-                }
-            }
-        }
-
-        function attachPeerConnection(connection) {
-            logPeerConnection(`데이터 연결 객체 생성 (상대 Peer: ${connection.peer || '알 수 없음'})`);
-            const pc = connection.peerConnection;
-            if (pc) {
-                logPeerConnection(`초기 ICE 상태: ${pc.iceConnectionState || 'unknown'}, 연결 상태: ${pc.connectionState || 'unknown'}`);
-                pc.addEventListener('iceconnectionstatechange', () => logPeerConnection(`ICE 상태 변경: ${pc.iceConnectionState}`));
-                pc.addEventListener('connectionstatechange', () => logPeerConnection(`Peer 연결 상태 변경: ${pc.connectionState}`));
-                pc.addEventListener('icegatheringstatechange', () => logPeerConnection(`ICE 후보 수집 상태: ${pc.iceGatheringState}`));
-                pc.addEventListener('icecandidate', event => {
-                    if (!event.candidate) {
-                        logPeerConnection('ICE 후보 수집 완료');
-                        return;
-                    }
-                    const candidateType = event.candidate.type || event.candidate.candidate?.match(/ typ (host|srflx|prflx|relay)\b/)?.[1] || 'unknown';
-                    logPeerConnection(`ICE 후보 발견: ${candidateType}`);
-                });
-            } else {
-                logPeerConnection('브라우저 PeerConnection 세부 정보에 접근할 수 없습니다.');
-            }
-            if (state.peerConnection && state.peerConnection.open) state.peerConnection.close();
-            state.peerConnection = connection;
-            connection.on('open', () => {
-                logPeerConnection('데이터 채널 open 이벤트 발생');
-                document.getElementById('connectionBadge').textContent = 'PeerJS 연결됨';
-                if (state.isHost && state.roomData) {
-                    clearPeerIdWait();
-                    state.roomData = { ...state.roomData, guestId: connection.peer, guestName: connection.metadata?.nickname || '상대', status: 'in-progress' };
-                    state.rooms[state.roomData.id] = state.roomData;
-                    renderGameState();
-                    connection.send({ type: 'ROOM_UPDATED', payload: state.roomData });
-                } else {
-                    const sendJoinRequest = () => {
-                        if (connection.open) connection.send({ type: 'JOIN_REQUEST', payload: { nickname: state.nickname } });
-                    };
-                    sendJoinRequest();
-                    if (state.peerJoinRetryInterval) clearInterval(state.peerJoinRetryInterval);
-                    state.peerJoinRetryInterval = setInterval(sendJoinRequest, 2000);
-                }
-            });
-            connection.on('data', data => handlePeerMessage({ ...data, __peerMessage: true }));
-            connection.on('close', () => {
-                logPeerConnection('데이터 채널 close 이벤트 발생');
-                if (state.peerConnection === connection) state.peerConnection = null;
-                if (state.peerJoinRetryInterval) clearInterval(state.peerJoinRetryInterval);
-                state.peerJoinRetryInterval = null;
-                document.getElementById('connectionBadge').textContent = '연결 끊김';
-            });
-            connection.on('error', error => {
-                logPeerConnection(`데이터 연결 오류: ${error.type || error.message || String(error)}`);
-                console.error('PeerJS data connection error:', error);
-            });
-        }
-
-        function handlePeerMessage(msg) {
-            if (!msg || !msg.type) return;
-            if (msg.type === 'SYNC_ROOMS') {
-                state.currentRoomId = null;
-                state.roomData = null;
-                state.isHost = false;
-                resetTurnTimer();
-                switchStage('stageLobby');
-                showChatToast('연결 종료', '방장이 게임을 종료했습니다.');
-            } else if (msg.type === 'JOIN_REQUEST' && state.isHost && state.roomData) {
-                state.roomData = { ...state.roomData, guestId: state.peerConnection?.peer || 'guest', guestName: msg.payload?.nickname || '상대', status: 'in-progress', updatedAt: Date.now() };
-                state.rooms[state.roomData.id] = state.roomData;
-                renderGameState();
-                state.peerConnection?.send({ type: 'ROOM_UPDATED', payload: state.roomData });
-            } else if (msg.type === 'ROOM_UPDATED' && msg.payload) {
-                const room = msg.payload;
-                state.rooms[room.id] = room;
-                if (!state.currentRoomId) {
-                    if (state.peerJoinRetryInterval) clearInterval(state.peerJoinRetryInterval);
-                    state.peerJoinRetryInterval = null;
-                    state.currentRoomId = room.id;
-                    state.isHost = false;
-                    state.roomData = room;
-                    clearTimeout(state.peerConnectTimeout);
-                    state.peerConnectTimeout = null;
-                    setPeerConnectionStatus('상대 방에 연결했습니다. 게임을 시작합니다.');
-                    const connectButton = document.getElementById('btnConnectPeerRoom');
-                    if (connectButton) connectButton.disabled = false;
-                    enterGameStage();
-                    return;
-                }
-                if (state.currentRoomId === room.id) { state.roomData = room; renderGameState(); }
-            } else if (msg.type === 'CHAT_EMOTE' && msg.payload) {
-                showChatToast(msg.payload.user, msg.payload.text);
-            }
-        }
-
-        window.connectToPeerRoom = function() {
-            const peerId = document.getElementById('peerIdToJoin').value.trim();
-            if (!peerId) { alert('방장이 공유한 Peer ID를 입력하세요.'); return; }
-            if (!window.Peer) { alert('PeerJS를 불러오지 못했습니다.'); return; }
-            if (state.isHost && state.peer?.id === peerId) {
-                setPeerConnectionStatus('이 ID는 내 방의 ID입니다. 상대 ID를 입력하세요.', true);
-                return;
-            }
-            const button = document.getElementById('btnConnectPeerRoom');
-            button.disabled = true;
-            state.peerLogEntries = [];
-            state.peerLogStartedAt = Date.now();
-            renderPeerConnectionLog();
-            logPeerConnection(`접속 시도 시작 (페이지: ${location.origin}, 브라우저: ${navigator.userAgent})`);
-            setPeerConnectionStatus('Peer 서버에 연결 중…');
-            if (!state.peer || state.peer.destroyed) state.peer = createPeer();
-            state.peer.on('open', id => logPeerConnection(`PeerJS 시그널링 서버 연결됨 (내 Peer ID: ${id})`));
-            state.peer.on('disconnected', () => logPeerConnection('PeerJS 시그널링 서버 연결 끊김'));
-            const connect = () => {
-                setPeerConnectionStatus('상대 방에 접속 중…');
-                const connection = state.peer.connect(peerId, { reliable: true, metadata: { nickname: state.nickname } });
-                attachPeerConnection(connection);
-                let connectTimedOut = false;
-                const timeout = setTimeout(() => {
-                    if (!state.currentRoomId) {
-                        connectTimedOut = true;
-                        if (state.peerJoinRetryInterval) clearInterval(state.peerJoinRetryInterval);
-                        state.peerJoinRetryInterval = null;
-                        const iceState = connection.peerConnection?.iceConnectionState;
-                        logPeerConnection(`90초 제한 시간 종료 (ICE: ${iceState || '확인 불가'}, 채널 open: ${connection.open})`);
-                        const detail = iceState === 'failed' || iceState === 'disconnected'
-                            ? `WebRTC 경로 연결에 실패했습니다 (${iceState}). 서로 다른 네트워크에서 연결하려면 TURN 서버 설정이 필요할 수 있습니다.`
-                            : `상대 방에서 응답이 없습니다${iceState ? ` (ICE: ${iceState})` : ''}. Peer ID가 최신인지, 방장이 방을 열어 둔 상태인지 확인하세요.`;
-                        setPeerConnectionStatus(detail, true);
-                        button.disabled = false;
-                        if (state.peerConnection === connection) state.peerConnection = null;
-                        connection.close();
-                    }
-                }, 90000);
-                state.peerConnectTimeout = timeout;
-                connection.on('open', () => {
-                    logPeerConnection('접속 시도 측에서 데이터 채널 open 수신');
-                    setPeerConnectionStatus('데이터 채널 연결됨. 방장의 참가 확인을 기다리는 중…');
-                });
-                connection.on('error', error => {
-                    logPeerConnection(`접속 시도 오류: ${error.type || error.message || String(error)}`);
-                    clearTimeout(timeout);
-                    if (state.peerJoinRetryInterval) clearInterval(state.peerJoinRetryInterval);
-                    state.peerJoinRetryInterval = null;
-                    setPeerConnectionStatus(`접속 실패: ${error.type || error.message || '연결 오류'}`, true);
-                    button.disabled = false;
-                });
-                connection.on('close', () => {
-                    logPeerConnection('접속 시도 측에서 데이터 채널 close 수신');
-                    clearTimeout(timeout);
-                    if (!state.currentRoomId && !connectTimedOut) {
-                        setPeerConnectionStatus('상대가 연결을 종료했습니다.', true);
-                        button.disabled = false;
-                    }
-                });
-            };
-            state.peer.on('error', error => {
-                logPeerConnection(`PeerJS 오류: ${error.type || error.message || String(error)}`);
-                setPeerConnectionStatus(`Peer 오류: ${error.type || error.message}`, true);
-                button.disabled = false;
-            });
-            if (state.peer.open) connect(); else state.peer.once('open', connect);
-        };
-
-        function clearPeerIdWait() {
-            if (state.peerWaitInterval) clearInterval(state.peerWaitInterval);
-            state.peerWaitInterval = null;
-            state.peerWaitEndsAt = 0;
-            const countdown = document.getElementById('peerIdWaitCountdown');
-            if (countdown) countdown.textContent = '';
-            document.getElementById('btnReissuePeerId')?.classList.add('hidden');
-        }
-
-        function startPeerIdWaitWindow() {
-            clearPeerIdWait();
-            state.peerWaitEndsAt = Date.now() + 90000;
-            const countdown = document.getElementById('peerIdWaitCountdown');
-            const updateCountdown = () => {
-                const secondsLeft = Math.max(0, Math.ceil((state.peerWaitEndsAt - Date.now()) / 1000));
-                if (secondsLeft > 0) {
-                    countdown.textContent = `접속 대기 ${Math.floor(secondsLeft / 60)}:${String(secondsLeft % 60).padStart(2, '0')}`;
-                    return;
-                }
-                clearInterval(state.peerWaitInterval);
-                state.peerWaitInterval = null;
-                if (state.isHost && state.roomData?.status === 'waiting' && !state.peerConnection?.open) {
-                    countdown.textContent = '1분 30초 동안 접속이 없습니다. 필요하면 Peer ID를 다시 발급하세요.';
-                    document.getElementById('btnReissuePeerId').classList.remove('hidden');
-                }
-            };
-            state.peerWaitInterval = setInterval(updateCountdown, 1000);
-            updateCountdown();
-        }
-
-        window.reissuePeerId = async function() {
-            if (!state.isHost || state.roomData?.status !== 'waiting' || state.peerConnection?.open) return;
-            const button = document.getElementById('btnReissuePeerId');
-            button.disabled = true;
-            button.textContent = '발급 중…';
-            clearPeerIdWait();
-            if (state.peer) state.peer.destroy();
-            state.peerConnection = null;
-            try {
-                const nextPeer = createPeer();
-                state.peer = nextPeer;
-                const peerId = await new Promise((resolve, reject) => {
-                    nextPeer.once('open', resolve);
-                    nextPeer.once('error', reject);
-                });
-                nextPeer.on('connection', attachPeerConnection);
-                state.roomData = { ...state.roomData, peerId, updatedAt: Date.now() };
-                state.rooms[state.roomData.id] = state.roomData;
-                localStorage.setItem('arena_rooms', JSON.stringify(state.rooms));
-                document.getElementById('peerIdToJoin').value = peerId;
-                document.getElementById('gamePeerIdText').textContent = peerId;
-                renderGameState();
-                startPeerIdWaitWindow();
-                setPeerConnectionStatus('새 Peer ID를 발급했습니다. 복사해 상대에게 다시 보내세요.');
-            } catch (error) {
-                setPeerConnectionStatus(`Peer ID 재발급 실패: ${error.type || error.message}`, true);
-                document.getElementById('btnReissuePeerId').classList.remove('hidden');
-            } finally {
-                button.disabled = false;
-                button.textContent = 'ID 재발급';
-            }
-        };
-
-        function setPeerConnectionStatus(message, isError = false) {
-            const status = document.getElementById('peerConnectionStatus');
-            status.textContent = message;
-            status.className = `w-full sm:w-auto text-xs ${isError ? 'text-rose-400' : 'text-emerald-300'}`;
-        }
-
-        function logPeerConnection(message) {
-            if (!state.peerLogStartedAt) state.peerLogStartedAt = Date.now();
-            const elapsed = Math.max(0, Math.round((Date.now() - state.peerLogStartedAt) / 1000));
-            state.peerLogEntries.push(`[+${elapsed}s] ${message}`);
-            if (state.peerLogEntries.length > 200) state.peerLogEntries.shift();
-            renderPeerConnectionLog();
-        }
-
-        function renderPeerConnectionLog() {
-            const log = document.getElementById('peerConnectionLog');
-            if (!log) return;
-            log.textContent = state.peerLogEntries.length ? state.peerLogEntries.join('\n') : '연결 로그가 여기에 표시됩니다.';
-            log.scrollTop = log.scrollHeight;
-        }
-
-        window.copyPeerConnectionLog = async function() {
-            const contents = state.peerLogEntries.join('\n') || '수집된 연결 로그가 없습니다.';
-            try {
-                await navigator.clipboard.writeText(contents);
-                setPeerConnectionStatus('접속 로그를 복사했습니다. 그대로 공유해 주세요.');
-            } catch (error) {
-                window.prompt('접속 로그를 복사하세요.', contents);
-            }
-        };
-
-        window.clearPeerConnectionLog = function() {
-            state.peerLogEntries = [];
-            state.peerLogStartedAt = Date.now();
-            renderPeerConnectionLog();
-        };
-
-        window.copyPeerId = async function() {
-            const peerId = state.peer?.id;
-            if (!peerId) { setPeerConnectionStatus('복사할 Peer ID가 없습니다.', true); return; }
-            try {
-                await navigator.clipboard.writeText(peerId);
-                const gameButton = document.getElementById('btnCopyGamePeerId');
-                if (gameButton) gameButton.textContent = '복사됨';
-                setPeerConnectionStatus('내 Peer ID를 복사했습니다. 상대에게 공유하세요.');
-            } catch (error) {
-                window.prompt('Peer ID를 복사하세요.', peerId);
-            }
-        };
-
-        function initLocalEmulation() {
-            // Load saved state from LocalStorage
-            try {
-                const savedNicknames = JSON.parse(localStorage.getItem('arena_nicknames') || '[]');
-                state.activeNicknames = new Set(savedNicknames);
-                const savedRooms = JSON.parse(localStorage.getItem('arena_rooms') || '{}');
-                state.rooms = savedRooms;
-            } catch (e) {
-                state.rooms = {};
-            }
-
-            renderRoomList();
-            announceMyPresence();
-            
-            // Poll local storage periodically for multi-tab fallback
-            setInterval(() => {
-                const currentStoredRooms = JSON.parse(localStorage.getItem('arena_rooms') || '{}');
-                if (JSON.stringify(currentStoredRooms) !== JSON.stringify(state.rooms)) {
-                    state.rooms = currentStoredRooms;
-                    renderRoomList();
-                    checkActiveRoomSync();
-                }
-            }, 1000);
-        }
-
-        function announceMyPresence() {
-            if (state.nickname) {
-                state.activeNicknames.add(state.nickname.toLowerCase());
-                broadcastStateUpdate('PONG_NICKNAME', { nickname: state.nickname, userId: state.userId, sessionId: state.sessionId });
-            } else {
-                broadcastStateUpdate('PING_NICKNAME_CHECK', {});
-            }
-        }
-
-        // Legacy nickname and room synchronization is disabled for direct PeerJS sessions.
-        function subscribeFirebaseData() {
-            if (!state.useFirebase || !db) return;
-
-            // 1. Subscribe to Active Nicknames
-            const nickCol = collection(db, 'artifacts', appId, 'public', 'data', 'nicknames');
-            onSnapshot(nickCol, (snapshot) => {
-                const nicks = new Set();
-                const owners = {};
-                let ownNicknamePresent = false;
-                snapshot.forEach(doc => {
-                    if (doc.data().nickname) {
-                        const normalized = doc.data().nickname.toLowerCase();
-                        nicks.add(normalized);
-                        owners[normalized] = { sessionId: doc.id, userId: doc.data().userId || doc.id };
-                        if (doc.id === state.sessionId) ownNicknamePresent = true;
-                    }
-                });
-                state.activeNicknames = nicks;
-                state.nicknameOwners = owners;
-                validateNicknameInput();
-                if (state.hasRegisteredNickname && Date.now() >= state.nicknameSessionCheckAfter && state.nickname && !ownNicknamePresent) handleSessionReplacement();
-            }, (error) => console.error("Nicknames snapshot error:", error));
-
-            const requestCol = collection(db, 'artifacts', appId, 'public', 'data', 'nickname_requests');
-            onSnapshot(requestCol, (snapshot) => {
-                snapshot.forEach(requestDoc => {
-                    const request = requestDoc.data();
-                    if (request.targetSessionId === state.sessionId && request.status === 'pending' && request.expiresAt > Date.now()) {
-                        showNicknameTakeoverRequest({ ...request, requestId: requestDoc.id });
-                    }
-                });
-            }, (error) => console.error('Nickname request snapshot error:', error));
-
-            // 2. Subscribe to Public Game Rooms
-            const roomsCol = collection(db, 'artifacts', appId, 'public', 'data', 'game_rooms');
-            onSnapshot(roomsCol, (snapshot) => {
-                const roomsObj = {};
-                snapshot.forEach(doc => {
-                    roomsObj[doc.id] = doc.data();
-                });
-                state.rooms = roomsObj;
-                renderRoomList();
-                checkActiveRoomSync();
-            }, (error) => console.error("Rooms snapshot error:", error));
-        }
-
-        // Ensure current active room state updates in real-time
-        function checkActiveRoomSync() {
-            if (state.currentRoomId && state.rooms[state.currentRoomId]) {
-                const freshRoom = state.rooms[state.currentRoomId];
-                if (freshRoom.status === 'deleted') {
-                    state.currentRoomId = null;
-                    state.roomData = null;
-                    state.isHost = false;
-                    resetTurnTimer();
-                    switchStage('stageLobby');
-                    showChatToast('방 삭제', '방장이 이 방을 삭제했습니다.');
-                    return;
-                }
-                state.roomData = freshRoom;
-                renderGameState();
-            } else if (state.currentRoomId) {
-                state.currentRoomId = null;
-                state.roomData = null;
-                state.isHost = false;
-                resetTurnTimer();
-                switchStage('stageLobby');
-                showChatToast('방 삭제', '현재 방이 삭제되었습니다.');
-            }
-        }
-
-        // ================= STAGE 1 LOGIC: NICKNAME VALIDATION =================
-        const inputNickname = document.getElementById('inputNickname');
-        const nicknameFeedback = document.getElementById('nicknameFeedback');
-        const nicknameStatusIcon = document.getElementById('nicknameStatusIcon');
-        const btnEnterLobby = document.getElementById('btnEnterLobby');
-
-        inputNickname.addEventListener('input', validateNicknameInput);
-
-        function validateNicknameInput() {
-            const val = inputNickname.value.trim();
-            nicknameStatusIcon.classList.remove('hidden');
-
-            if (val.length < 2) {
-                nicknameFeedback.textContent = "닉네임은 2자 이상이어야 합니다.";
-                nicknameFeedback.className = "text-xs min-h-[20px] font-medium text-amber-400";
-                nicknameStatusIcon.innerHTML = `<i class="fa-solid fa-triangle-exclamation text-amber-400"></i>`;
-                btnEnterLobby.disabled = true;
-                btnEnterLobby.className = "w-full py-3.5 px-6 rounded-xl font-bold text-white bg-slate-800 border border-slate-700 opacity-50 cursor-not-allowed transition-all shadow-lg flex items-center justify-center gap-2";
-                return false;
-            }
-
-            // Check if nickname already exists in active set
-            const isTaken = state.activeNicknames.has(val.toLowerCase());
-            if (isTaken && val.toLowerCase() !== state.nickname.toLowerCase()) {
-                nicknameFeedback.textContent = '이미 접속 중입니다. 접속 요청 후 5초 동안 차단되지 않으면 재접속합니다.';
-                nicknameFeedback.className = 'text-xs min-h-[20px] font-medium text-amber-300';
-                nicknameStatusIcon.innerHTML = `<i class="fa-solid fa-user-clock text-amber-300"></i>`;
-                btnEnterLobby.disabled = false;
-                btnEnterLobby.className = 'w-full py-3.5 px-6 rounded-xl font-bold text-white bg-gradient-to-r from-amber-600 to-amber-500 border border-amber-400/30 cursor-pointer transition-all shadow-lg flex items-center justify-center gap-2';
-                return true;
-                nicknameFeedback.textContent = "이미 사용 중인 닉네임입니다. 다른 닉네임을 입력하세요.";
-                nicknameFeedback.className = "text-xs min-h-[20px] font-medium text-rose-400";
-                nicknameStatusIcon.innerHTML = `<i class="fa-solid fa-circle-xmark text-rose-400"></i>`;
-                btnEnterLobby.disabled = true;
-                btnEnterLobby.className = "w-full py-3.5 px-6 rounded-xl font-bold text-white bg-slate-800 border border-slate-700 opacity-50 cursor-not-allowed transition-all shadow-lg flex items-center justify-center gap-2";
-                return false;
-            }
-
-            // Valid & Unique
-            nicknameFeedback.textContent = "사용 가능한 닉네임입니다!";
-            nicknameFeedback.className = "text-xs min-h-[20px] font-medium text-emerald-400";
-            nicknameStatusIcon.innerHTML = `<i class="fa-solid fa-circle-check text-emerald-400"></i>`;
-            btnEnterLobby.disabled = false;
-            btnEnterLobby.className = "w-full py-3.5 px-6 rounded-xl font-bold text-white bg-gradient-to-r from-brand-600 to-brand-500 hover:from-brand-500 hover:to-brand-400 border border-brand-400/30 cursor-pointer transition-all shadow-lg shadow-brand-500/25 flex items-center justify-center gap-2";
-            return true;
-        }
-
-        function showNicknameTakeoverRequest(request) {
-            if (!request.requestId || state.pendingNicknameRequests.has(request.requestId)) return;
-            state.pendingNicknameRequests.set(request.requestId, request);
-            state.activeNicknameRequestId = request.requestId;
-            const modal = document.getElementById('nicknameTakeoverModal');
-            modal.classList.remove('hidden');
-            modal.classList.add('flex');
-            document.getElementById('nicknameTakeoverMessage').textContent = `${request.nickname || state.nickname} 닉네임으로 새 접속 요청이 왔습니다.`;
-            const countdown = document.getElementById('nicknameTakeoverCountdown');
-            const updateCountdown = () => {
-                const remaining = Math.max(0, Math.ceil(((request.expiresAt || Date.now() + 5000) - Date.now()) / 1000));
-                countdown.textContent = remaining ? `${remaining}초 안에 차단할 수 있습니다` : '재접속 처리 중';
-                if (!remaining) {
-                    clearInterval(state.nicknameRequestTimer);
-                    state.nicknameRequestTimer = null;
-                    state.pendingNicknameRequests.delete(request.requestId);
-                    modal.classList.add('hidden');
-                    modal.classList.remove('flex');
-                }
-            };
-            if (state.nicknameRequestTimer) clearInterval(state.nicknameRequestTimer);
-            updateCountdown();
-            state.nicknameRequestTimer = setInterval(updateCountdown, 200);
-        }
-
-        window.blockNicknameTakeover = async function() {
-            const requestId = state.activeNicknameRequestId;
-            const request = requestId && state.pendingNicknameRequests.get(requestId);
-            if (!request || Date.now() > request.expiresAt) return;
-            if (state.useFirebase && db) {
-                await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'nickname_requests', requestId), { status: 'blocked', blockedAt: serverTimestamp() });
-            } else {
-                broadcastStateUpdate('NICKNAME_TAKEOVER_BLOCKED', { requestId, requesterId: request.requesterId });
-            }
-            state.pendingNicknameRequests.delete(requestId);
-            if (state.nicknameRequestTimer) clearInterval(state.nicknameRequestTimer);
-            document.getElementById('nicknameTakeoverModal').classList.add('hidden');
-            document.getElementById('nicknameTakeoverModal').classList.remove('flex');
-            showChatToast('접속 차단', '재접속 요청을 차단했습니다.');
-        };
-
-        async function cleanupRoomsForUser(userIds, nickname = '') {
-            const ids = new Set(userIds);
-            const matchesNickname = room => nickname && [room.hostName, room.guestName].some(name => name?.toLowerCase() === nickname.toLowerCase());
-            const resetRoom = room => ({ ...room, guestId: null, guestName: null, status: 'waiting', boardState: Array((room.boardSize || 0) ** 2).fill(null), mathRound: 1, mathScores: { P1: 0, P2: 0 }, mathSubmissions: { P1: null, P2: null }, winner: null, currentTurn: 'P1', rematchRequest: { P1: false, P2: false }, updatedAt: Date.now() });
-            if (state.useFirebase && db) {
-                const roomCol = collection(db, 'artifacts', appId, 'public', 'data', 'game_rooms');
-                const snapshot = await getDocs(roomCol);
-                const updates = [];
-                snapshot.forEach(roomDoc => {
-                    const room = roomDoc.data();
-                    if (ids.has(room.hostId) || (!ids.size && matchesNickname(room) && room.hostName?.toLowerCase() === nickname.toLowerCase())) updates.push(deleteDoc(roomDoc.ref));
-                    else if (ids.has(room.guestId) || (!ids.size && matchesNickname(room) && room.guestName?.toLowerCase() === nickname.toLowerCase())) updates.push(updateDoc(roomDoc.ref, { ...resetRoom(room), updatedAt: serverTimestamp() }));
-                });
-                await Promise.all(updates);
-                return;
-            }
-            const rooms = JSON.parse(localStorage.getItem('arena_rooms') || '{}');
-            for (const [id, room] of Object.entries(rooms)) {
-                if (ids.has(room.hostId)) delete rooms[id];
-                else if (ids.has(room.guestId)) rooms[id] = resetRoom(room);
-            }
-            state.rooms = rooms;
-            localStorage.setItem('arena_rooms', JSON.stringify(rooms));
-            broadcastStateUpdate('SYNC_ROOMS', rooms);
-        }
-
-        async function requestNicknameTakeover(nickname) {
-            const normalized = nickname.toLowerCase();
-            if (state.useFirebase && db) {
-                const nickCol = collection(db, 'artifacts', appId, 'public', 'data', 'nicknames');
-                const ownersSnapshot = await getDocs(nickCol);
-                const ownerIds = [];
-                const ownerUserIds = new Set();
-                ownersSnapshot.forEach(owner => {
-                    if (owner.data().nickname?.toLowerCase() === normalized && owner.id !== state.sessionId) {
-                        ownerIds.push(owner.id);
-                        ownerUserIds.add(owner.data().userId || owner.id);
-                    }
-                });
-                if (!ownerIds.length) return true;
-                const reqRef = doc(collection(db, 'artifacts', appId, 'public', 'data', 'nickname_requests'));
-                await setDoc(reqRef, { requesterId: state.sessionId, targetSessionId: ownerIds[0], nickname, status: 'pending', expiresAt: Date.now() + 5000, createdAt: serverTimestamp() });
-                await new Promise(resolve => setTimeout(resolve, 5000));
-                const requestSnapshot = await getDoc(reqRef);
-                if (requestSnapshot.exists() && requestSnapshot.data().status === 'blocked') {
-                    await deleteDoc(reqRef);
-                    return false;
-                }
-                if (requestSnapshot.exists()) await updateDoc(reqRef, { status: 'approved' });
-                await cleanupRoomsForUser([...ownerUserIds], nickname);
-                const latestOwners = await getDocs(nickCol);
-                const removals = [];
-                latestOwners.forEach(owner => {
-                    if (owner.data().nickname?.toLowerCase() === normalized && owner.id !== state.sessionId) removals.push(deleteDoc(owner.ref));
-                });
-                await Promise.all(removals);
-                if (requestSnapshot.exists()) await deleteDoc(reqRef);
-                return true;
-            }
-
-            broadcastStateUpdate('PING_NICKNAME_CHECK', {});
-            await new Promise(resolve => setTimeout(resolve, 300));
-            const owner = state.nicknameOwners[normalized];
-            if (!owner) {
-                return true;
-            }
-            const requestId = `req_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-            const expiresAt = Date.now() + 5000;
-            let blocked = false;
-            const eventName = `nickname-request-${requestId}`;
-            const onDecision = event => { blocked = event.detail === 'blocked'; };
-            window.addEventListener(eventName, onDecision);
-            broadcastStateUpdate('NICKNAME_TAKEOVER_REQUEST', { requestId, targetId: owner.sessionId, requesterId: state.sessionId, nickname, expiresAt });
-            await new Promise(resolve => setTimeout(resolve, 5000));
-            window.removeEventListener(eventName, onDecision);
-            if (blocked) return false;
-            broadcastStateUpdate('NICKNAME_TAKEOVER_GRANTED', { targetId: owner.sessionId, nickname });
-            await cleanupRoomsForUser([owner.userId], nickname);
-            state.activeNicknames.delete(normalized);
-            localStorage.setItem('arena_nicknames', JSON.stringify(Array.from(state.activeNicknames)));
-            broadcastStateUpdate('SYNC_NICKNAMES', Array.from(state.activeNicknames));
-            return true;
-        }
-
-        function handleSessionReplacement() {
-            if (!state.hasRegisteredNickname) return;
-            state.hasRegisteredNickname = false;
-            state.nickname = '';
-            state.currentRoomId = null;
-            state.roomData = null;
-            state.isHost = false;
-            resetTurnTimer();
-            document.getElementById('headerProfile').classList.add('hidden');
-            document.getElementById('headerProfile').classList.remove('flex');
-            switchStage('stageNickname');
-            nicknameFeedback.textContent = '같은 닉네임으로 재접속하여 기존 세션이 종료되었습니다.';
-            nicknameFeedback.className = 'text-xs min-h-[20px] font-medium text-amber-300';
-        }
-
-        window.proceedToLobby = async function() {
-            if (state.isConnecting || !validateNicknameInput()) return;
-
-            const nick = inputNickname.value.trim();
-            state.isConnecting = true;
-            btnEnterLobby.disabled = true;
-            const isTaken = state.activeNicknames.has(nick.toLowerCase()) && nick.toLowerCase() !== state.nickname.toLowerCase();
-            if (isTaken) {
-                nicknameFeedback.textContent = '기존 접속자에게 5초 동안 접속 차단 기회를 알리는 중…';
-                let allowed = false;
-                try { allowed = await requestNicknameTakeover(nick); }
-                catch (error) {
-                    console.error('Nickname reconnect request failed:', error);
-                    state.isConnecting = false;
-                    validateNicknameInput();
-                    nicknameFeedback.textContent = '접속 요청을 처리하지 못했습니다. 잠시 후 다시 시도하세요.';
-                    return;
-                }
-                if (!allowed) {
-                    state.isConnecting = false;
-                    validateNicknameInput();
-                    nicknameFeedback.textContent = '기존 접속자가 재접속을 차단했습니다.';
-                    nicknameFeedback.className = 'text-xs min-h-[20px] font-medium text-rose-400';
-                    return;
-                }
-            }
-            state.nickname = nick;
-
-            // Register nickname to backend
-            if (state.useFirebase && db) {
-                try {
-                    const nickRef = doc(db, 'artifacts', appId, 'public', 'data', 'nicknames', state.sessionId);
-                    await setDoc(nickRef, { nickname: nick, userId: state.userId, sessionId: state.sessionId, createdAt: serverTimestamp() });
-                } catch (e) {
-                    console.error("Error registering nickname:", e);
-                }
-            } else {
-                state.activeNicknames.add(nick.toLowerCase());
-                localStorage.setItem('arena_nicknames', JSON.stringify(Array.from(state.activeNicknames)));
-                announceMyPresence();
-            }
-            state.hasRegisteredNickname = true;
-            state.nicknameSessionCheckAfter = Date.now() + 3000;
-            state.isConnecting = false;
-
-            // Update Header Profile
-            document.getElementById('headerNickname').textContent = nick;
-            document.getElementById('headerAvatar').textContent = nick.charAt(0).toUpperCase();
-            document.getElementById('lobbyNickname').textContent = nick;
-            document.getElementById('lobbyAvatar').textContent = nick.charAt(0).toUpperCase();
-            document.getElementById('headerProfile').classList.remove('hidden');
-            document.getElementById('headerProfile').classList.add('flex');
-
-            // Transition UI Stage
-            switchStage('stageLobby');
-        };
-
-        // Reset nickname / Logout
-        document.getElementById('btnChangeNickname').addEventListener('click', async () => {
-            if (state.currentRoomId) {
-                if (!confirm("현재 입장 중인 방에서 나가고 닉네임을 변경하시겠습니까?")) return;
-                leaveRoom();
-            }
-            if (state.useFirebase && db && state.userId) {
-                try {
-                    await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'nicknames', state.sessionId));
-                } catch(e){}
-            }
-            if (!state.useFirebase && state.nickname) {
-                state.activeNicknames.delete(state.nickname.toLowerCase());
-                localStorage.setItem('arena_nicknames', JSON.stringify(Array.from(state.activeNicknames)));
-                broadcastStateUpdate('SYNC_NICKNAMES', Array.from(state.activeNicknames));
-            }
-            state.nickname = '';
-            state.hasRegisteredNickname = false;
-            document.getElementById('headerProfile').classList.add('hidden');
-            document.getElementById('headerProfile').classList.remove('flex');
-            switchStage('stageNickname');
-        });
-
-        // ================= STAGE 2 LOGIC: LOBBY & ROOM LIST =================
-        window.showCreateRoomModal = function() {
-            document.getElementById('modalCreateRoom').classList.remove('hidden');
-            document.getElementById('modalCreateRoom').classList.add('flex');
-            document.getElementById('inputRoomTitle').focus();
-        };
-
-        window.hideCreateRoomModal = function() {
-            document.getElementById('modalCreateRoom').classList.add('hidden');
-            document.getElementById('modalCreateRoom').classList.remove('flex');
-        };
-
-        window.submitCreateRoom = async function() {
-            if (!window.Peer) { alert('PeerJS를 불러오지 못했습니다. 인터넷 연결을 확인하세요.'); return; }
-            if (state.peer) state.peer.destroy();
-            state.peer = createPeer();
-            try {
-                await new Promise((resolve, reject) => {
-                    state.peer.once('open', resolve);
-                    state.peer.once('error', reject);
-                });
-            } catch (error) { alert(`Peer 생성 실패: ${error.message || error.type}`); return; }
-            state.peer.on('connection', attachPeerConnection);
-            const titleInput = document.getElementById('inputRoomTitle').value.trim();
-            const roomTitle = titleInput || `${state.nickname}님의 대전 방`;
-            const selectedType = document.querySelector('input[name="gameType"]:checked').value;
-
-            const boardSize = selectedType === 'gomoku' ? 10 : selectedType === 'tictactoe' ? 3 : 0;
-            const newRoomId = 'room_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4);
-
-            const newRoom = {
-                id: newRoomId,
-                peerId: state.peer.id,
-                title: roomTitle,
-                gameType: selectedType,
-                boardSize: boardSize,
-                status: 'waiting', // waiting, in-progress, finished
-                hostId: state.userId,
-                hostName: state.nickname,
-                guestId: null,
-                guestName: null,
-                currentTurn: 'P1', // P1: Host, P2: Guest
-                boardState: Array(boardSize * boardSize).fill(null),
-                mathRound: 1,
-                mathScores: { P1: 0, P2: 0 },
-                mathSubmissions: { P1: null, P2: null },
-                mathSeed: Math.floor(Math.random() * 2147483647),
-                cardBattle: { round: 1, scores: { P1: 0, P2: 0 }, submissions: {}, ready: {}, resolvedRound: 0 },
-                winner: null,
-                rematchRequest: { P1: false, P2: false },
-                updatedAt: Date.now()
-            };
-
-            state.currentRoomId = newRoomId;
-            state.isHost = true;
-            state.roomData = newRoom;
-            startPeerIdWaitWindow();
-            document.getElementById('peerIdToJoin').value = state.peer.id;
-            document.getElementById('btnCopyPeerId').classList.remove('hidden');
-            document.getElementById('gamePeerIdText').textContent = state.peer.id;
-            setPeerConnectionStatus('방을 만들었습니다. 내 ID를 복사해 상대에게 공유하세요.');
-
-            if (state.useFirebase && db) {
-                try {
-                    await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'game_rooms', newRoomId), newRoom);
-                } catch (e) {
-                    console.error("Error creating room on Firebase:", e);
-                }
-            } else {
-                state.rooms[newRoomId] = newRoom;
-                localStorage.setItem('arena_rooms', JSON.stringify(state.rooms));
-                broadcastStateUpdate('ROOM_UPDATED', newRoom);
-            }
-
-            hideCreateRoomModal();
-            enterGameStage();
-        };
-
-        window.joinRoom = async function(roomId) {
-            const room = state.rooms[roomId];
-            if (!room) return;
-
-            if (room.status !== 'waiting') {
-                alert("이미 대전이 진행 중이거나 종료된 방입니다.");
-                return;
-            }
-
-            if (room.hostId === state.userId) {
-                // Re-joining own room
-                state.currentRoomId = roomId;
-                state.isHost = true;
-                state.roomData = room;
-                enterGameStage();
-                return;
-            }
-
-            // Join as Guest (Player 2)
-            const updatedRoom = {
-                ...room,
-                guestId: state.userId,
-                guestName: state.nickname,
-                status: 'in-progress',
-                updatedAt: Date.now()
-            };
-
-            state.currentRoomId = roomId;
-            state.isHost = false;
-            state.roomData = updatedRoom;
-
-            if (state.useFirebase && db) {
-                try {
-                    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'game_rooms', roomId), {
-                        guestId: state.userId,
-                        guestName: state.nickname,
-                        status: 'in-progress',
-                        updatedAt: serverTimestamp()
+        async function initializeBattleSync() {
+            if (!battleContext.roomId || !window.Peer) return false;
+            battleRoom = { id: battleContext.roomId, cardBattle: emptyBattleState() };
+            const connectAsHost = () => {
+                battlePeer = new Peer(battleContext.peerId || undefined);
+                battlePeer.on('open', id => {
+                    battleContext.peerId = id;
+                    const share = document.getElementById('peer-share');
+                    document.getElementById('peer-share-id').textContent = `상대에게 공유할 Peer ID: ${id}`;
+                    share.style.display = 'block';
+                    document.getElementById('deal-status').textContent = `Peer ID ${id} 를 상대에게 공유하세요.`;
+                    battlePeer.on('connection', connection => {
+                        battleConnection = connection;
+                        connection.on('open', () => connection.send({ type: 'BATTLE_STATE', payload: battleRoom.cardBattle }));
+                        connection.on('data', handleBattleMessage);
                     });
-                } catch (e) {
-                    console.error("Error joining room:", e);
-                }
-            } else {
-                state.rooms[roomId] = updatedRoom;
-                localStorage.setItem('arena_rooms', JSON.stringify(state.rooms));
-                broadcastStateUpdate('ROOM_UPDATED', updatedRoom);
-            }
-
-            enterGameStage();
-        };
-
-        async function fetchRooms() {
-            const owner = 'gumury11-hash';
-            const repo = 'all';
-            const url = `https://api.github.com/repos/${owner}/${repo}/issues?labels=room&state=open`;
-            const roomListEl = document.getElementById('roomListGrid') || document.getElementById('room-list');
-            const roomCountBadge = document.getElementById('roomCountBadge');
-
-            if (!roomListEl) return;
-
-            try {
-                const res = await fetch(url, {
-                    headers: {
-                        'Accept': 'application/vnd.github+json',
-                        'X-GitHub-Api-Version': '2022-11-28'
-                    }
+                    battleSyncReady = true;
+                    applyBattleState(battleRoom.cardBattle);
                 });
-
-                if (!res.ok) {
-                    throw new Error(`GitHub API 오류: ${res.status}`);
-                }
-
-                const issues = await res.json();
-                const rooms = Array.isArray(issues) ? issues.filter(issue => issue && issue.title) : [];
-
-                roomListEl.innerHTML = '';
-                roomCountBadge && (roomCountBadge.textContent = String(rooms.length));
-
-                if (rooms.length === 0) {
-                    roomListEl.innerHTML = `
-                        <div id="emptyRoomState" class="col-span-full glass-panel p-12 rounded-2xl text-center space-y-3">
-                            <div class="w-16 h-16 rounded-full bg-slate-800/80 mx-auto flex items-center justify-center text-slate-500 text-2xl">
-                                <i class="fa-solid fa-ghost"></i>
-                            </div>
-                            <h5 class="text-base font-bold text-slate-300">개설된 방이 없습니다</h5>
-                            <p class="text-xs text-slate-400 max-w-sm mx-auto">GitHub 이슈에 등록된 방이 아직 없습니다.</p>
-                        </div>
-                    `;
-                    return;
-                }
-
-                roomListEl.innerHTML = rooms.map(issue => `
-                    <div class="glass-card p-5 rounded-2xl flex flex-col justify-between gap-4 relative overflow-hidden">
-                        <div>
-                            <div class="flex items-center gap-2 mb-1.5">
-                                <span class="px-2 py-0.5 rounded text-[11px] font-bold bg-neon-cyan/10 text-neon-cyan border border-neon-cyan/20">
-                                    방 목록
-                                </span>
-                                <span class="text-xs font-semibold text-emerald-400">
-                                    <i class="fa-solid fa-circle text-[8px] mr-1"></i>대기 중
-                                </span>
-                            </div>
-                            <h4 class="font-bold text-base text-white tracking-tight line-clamp-1">${escapeHtml(issue.title)}</h4>
-                            <p class="text-xs text-slate-400 mt-1 flex items-center gap-1">
-                                <i class="fa-solid fa-user-shield text-slate-500"></i> 방 이름: <strong class="text-slate-200">${escapeHtml(issue.title)}</strong>
-                            </p>
-                        </div>
-
-                        <div class="pt-3 border-t border-slate-800 flex items-center justify-between">
-                            <span class="text-xs text-slate-500">이슈 번호: <strong class="text-slate-300">#${issue.number}</strong></span>
-                            <button onclick="alert('방 \"${escapeHtml(issue.title).replace(/'/g, "\\'")}\"에 입장합니다.')" class="px-4 py-2 rounded-xl text-xs font-bold text-white bg-brand-600 hover:bg-brand-500 shadow-md shadow-brand-500/20 transition-all">
-                                입장
-                            </button>
-                        </div>
-                    </div>
-                `).join('');
-            } catch (error) {
-                console.error('방 목록 불러오기 실패:', error);
-                roomListEl.innerHTML = `
-                    <div class="col-span-full glass-panel p-12 rounded-2xl text-center space-y-3">
-                        <div class="w-16 h-16 rounded-full bg-rose-500/10 mx-auto flex items-center justify-center text-rose-300 text-2xl">
-                            <i class="fa-solid fa-circle-exclamation"></i>
-                        </div>
-                        <h5 class="text-base font-bold text-slate-300">방 목록을 불러오지 못했습니다</h5>
-                        <p class="text-xs text-slate-400 max-w-sm mx-auto">GitHub API 연결 상태를 확인해 주세요.</p>
-                    </div>
-                `;
-                roomCountBadge && (roomCountBadge.textContent = '0');
+                battlePeer.on('error', error => {
+                    console.error('PeerJS host setup failed:', error);
+                    alert(`Peer 연결 준비 실패: ${error.type || error.message}`);
+                });
+            };
+            if (battleContext.role === 'P1') {
+                connectAsHost();
+                return await new Promise(resolve => {
+                    const timer = setInterval(() => {
+                        if (battleSyncReady) { clearInterval(timer); resolve(true); }
+                    }, 100);
+                    setTimeout(() => { clearInterval(timer); resolve(false); }, 15000);
+                });
             }
-        }
-
-        window.refreshRoomsManual = async function() {
-            await fetchRooms();
-            announceMyPresence();
-        };
-
-        function renderRoomList() {
-            return fetchRooms();
-        }
-
-        window.deleteRoomFromLobby = async function(roomId) {
-            const roomEntry = Object.entries(state.rooms || {}).find(([key, value]) => key === roomId || value?.id === roomId);
-            const storedRoomId = roomEntry?.[0] || roomId;
-            const room = roomEntry?.[1];
-            if (!room) {
-                alert('방 정보를 찾을 수 없습니다. 방 목록을 새로고침한 뒤 다시 시도하세요.');
-                return;
-            }
-            const ownsRoom = room.hostId === state.userId || (state.nickname && room.hostName?.toLowerCase() === state.nickname.toLowerCase());
-            if (!ownsRoom) {
-                alert('내가 만든 방만 삭제할 수 있습니다.');
-                return;
-            }
-            if (!confirm(`"${room.title || '내 방'}"을 삭제할까요?`)) return;
-            try {
-                if (state.useFirebase && db) {
-                    const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'game_rooms', storedRoomId);
-                    try {
-                        await deleteDoc(roomRef);
-                    } catch (deleteError) {
-                        // If Firestore rules permit updates but reject deletes, hide the room with a tombstone.
-                        await updateDoc(roomRef, { status: 'deleted', deletedAt: serverTimestamp(), deletedBy: state.userId });
-                    }
-                    delete state.rooms[storedRoomId];
-                } else {
-                    const latestRooms = JSON.parse(localStorage.getItem('arena_rooms') || '{}');
-                    delete latestRooms[storedRoomId];
-                    state.rooms = latestRooms;
-                    localStorage.setItem('arena_rooms', JSON.stringify(latestRooms));
-                    broadcastStateUpdate('SYNC_ROOMS', latestRooms);
-                }
-                if (state.currentRoomId === storedRoomId) {
-                    state.currentRoomId = null;
-                    state.roomData = null;
-                    state.isHost = false;
-                    resetTurnTimer();
-                    switchStage('stageLobby');
-                }
-                renderRoomList();
-            } catch (error) {
-                console.error('Room deletion failed:', error);
-                alert('방 삭제에 실패했습니다. 잠시 후 다시 시도하세요.');
-            }
-        };
-
-        window.deleteCurrentRoom = function() {
-            if (!state.isHost || !state.currentRoomId) return;
-            deleteRoomFromLobby(state.currentRoomId);
-        };
-
-        // ================= STAGE 3 LOGIC: REAL-TIME GAME ARENA =================
-        function enterGameStage() {
-            switchStage('stageGame');
-            initBoardUI();
-            renderGameState();
-        }
-
-        function initBoardUI() {
-            if (!state.roomData) return;
-            if (state.roomData.gameType === 'mathcards') {
-                document.getElementById('gameBoard').innerHTML = '';
-                return;
-            }
-            const size = state.roomData.boardSize || 10;
-            const boardEl = document.getElementById('gameBoard');
-            
-            boardEl.style.gridTemplateColumns = `repeat(${size}, minmax(0, 1fr))`;
-            
-            // Adjust cell size for mobile / grid size
-            const cellSizeClass = size === 10 ? 'w-7 h-7 sm:w-10 sm:h-10 text-xs sm:text-base' : 'w-20 h-20 sm:w-24 sm:h-24 text-3xl sm:text-4xl';
-            
-            let cellsHTML = '';
-            for (let i = 0; i < size * size; i++) {
-                cellsHTML += `
-                    <div id="cell-${i}" onclick="makeMove(${i})" 
-                        class="board-cell ${cellSizeClass} flex items-center justify-center font-extrabold select-none transition-transform active:scale-95">
-                    </div>
-                `;
-            }
-            boardEl.innerHTML = cellsHTML;
-        }
-
-        function renderGameState() {
-            const room = state.roomData;
-            if (!room) return;
-
-            const peerIdPanel = document.getElementById('gamePeerIdPanel');
-            const peerId = state.peer?.id || room.peerId;
-            const showPeerId = state.isHost && room.status === 'waiting' && !!peerId;
-            peerIdPanel.classList.toggle('hidden', !showPeerId);
-            peerIdPanel.classList.toggle('flex', showPeerId);
-            if (showPeerId) document.getElementById('gamePeerIdText').textContent = peerId;
-
-            if (room.gameType === 'mathcards') {
-                renderMathGameState(room);
-                return;
-            }
-            document.getElementById('mathGameView').classList.add('hidden');
-            document.getElementById('btnDeleteCurrentRoom').classList.toggle('hidden', !state.isHost);
-            document.getElementById('p1Card').parentElement.style.display = '';
-            document.getElementById('gameBoard').closest('.relative').style.display = '';
-            document.getElementById('gameModeDisplay').parentElement.parentElement.style.display = '';
-
-            // Player Info Update
-            document.getElementById('p1Name').textContent = room.hostName || '방장';
-            document.getElementById('p2Name').textContent = room.guestName || '도전자 대기 중...';
-            document.getElementById('gameModeDisplay').textContent = room.gameType === 'gomoku' ? '오목 (10x10)' : '틱택토 (3x3)';
-
-            const isMyTurn = (room.currentTurn === 'P1' && state.isHost) || (room.currentTurn === 'P2' && !state.isHost);
-            const myRole = state.isHost ? 'P1' : 'P2';
-
-            // Active Player Highlight
-            const p1Card = document.getElementById('p1Card');
-            const p2Card = document.getElementById('p2Card');
-
-            if (room.status === 'in-progress') {
-                if (room.currentTurn === 'P1') {
-                    p1Card.className = "flex items-center gap-3 p-2 rounded-xl transition-all border border-brand-500 bg-brand-500/10 shadow-lg shadow-brand-500/10";
-                    p2Card.className = "flex items-center gap-3 p-2 rounded-xl transition-all border border-transparent opacity-60 flex-row-reverse text-right";
-                } else {
-                    p1Card.className = "flex items-center gap-3 p-2 rounded-xl transition-all border border-transparent opacity-60";
-                    p2Card.className = "flex items-center gap-3 p-2 rounded-xl transition-all border border-neon-cyan bg-neon-cyan/10 shadow-lg shadow-neon-cyan/10 flex-row-reverse text-right";
-                }
-            }
-
-            // Update Board Cells
-            const size = room.boardSize;
-            for (let i = 0; i < size * size; i++) {
-                const cellEl = document.getElementById(`cell-${i}`);
-                if (!cellEl) continue;
-
-                const val = room.boardState[i];
-                if (val === 'P1') {
-                    cellEl.innerHTML = `<span class="w-4 h-4 sm:w-6 sm:h-6 rounded-full bg-gradient-to-tr from-brand-700 to-brand-500 shadow-md flex items-center justify-center text-white text-[10px] sm:text-xs">✕</span>`;
-                    cellEl.classList.add('occupied');
-                } else if (val === 'P2') {
-                    cellEl.innerHTML = `<span class="w-4 h-4 sm:w-6 sm:h-6 rounded-full bg-gradient-to-tr from-cyan-500 to-teal-300 shadow-md flex items-center justify-center text-slate-950 font-black text-[10px] sm:text-xs">○</span>`;
-                    cellEl.classList.add('occupied');
-                } else {
-                    cellEl.innerHTML = '';
-                    cellEl.classList.remove('occupied');
-                }
-            }
-
-            // Status Badge & Overlay Management
-            const statusTag = document.getElementById('gameStatusTag');
-            const overlay = document.getElementById('boardOverlay');
-            const overlayTitle = document.getElementById('boardOverlayTitle');
-            const overlaySubtitle = document.getElementById('boardOverlaySubtitle');
-            const overlayIcon = document.getElementById('boardOverlayIcon');
-            const overlayActions = document.getElementById('boardOverlayActions');
-
-            if (room.status === 'waiting') {
-                overlay.classList.remove('hidden');
-                overlayActions.classList.add('hidden');
-                overlayTitle.textContent = "도전자를 기다리는 중...";
-                overlaySubtitle.textContent = "상대 플레이어가 방에 접속하면 게임이 바로 시작됩니다.";
-                overlayIcon.innerHTML = `<i class="fa-solid fa-hourglass-half"></i>`;
-                statusTag.className = "px-3 py-1 rounded-full text-xs font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20 mb-1 flex items-center gap-1.5";
-                statusTag.innerHTML = `<i class="fa-solid fa-spinner animate-spin"></i><span>상대방 대기 중</span>`;
-                resetTurnTimer(false);
-
-            } else if (room.status === 'in-progress') {
-                overlay.classList.add('hidden');
-                
-                if (isMyTurn) {
-                    statusTag.className = "px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 mb-1 flex items-center gap-1.5 animate-pulse";
-                    statusTag.innerHTML = `<i class="fa-solid fa-gamepad"></i><span>내 턴입니다! 돌을 놓으세요</span>`;
-                } else {
-                    statusTag.className = "px-3 py-1 rounded-full text-xs font-bold bg-slate-800 text-slate-400 border border-slate-700 mb-1 flex items-center gap-1.5";
-                    statusTag.innerHTML = `<i class="fa-solid fa-hourglass-start"></i><span>상대방이 생각 중입니다...</span>`;
-                }
-
-                startTurnTimer();
-
-            } else if (room.status === 'finished') {
-                overlay.classList.remove('hidden');
-                overlayActions.classList.remove('hidden');
-                resetTurnTimer(false);
-
-                const isWinner = room.winner === myRole;
-                const isDraw = room.winner === 'draw';
-
-                if (isDraw) {
-                    overlayTitle.textContent = "무승부!";
-                    overlaySubtitle.textContent = "팽팽한 접전 끝에 비겼습니다.";
-                    overlayIcon.className = "w-16 h-16 rounded-2xl bg-amber-500/20 text-amber-400 border border-amber-500/40 flex items-center justify-center text-3xl";
-                    overlayIcon.innerHTML = `<i class="fa-solid fa-handshake"></i>`;
-                    statusTag.className = "px-3 py-1 rounded-full text-xs font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30 mb-1";
-                    statusTag.textContent = "무승부 게임 종료";
-                } else if (isWinner) {
-                    overlayTitle.textContent = "승리했습니다! 🎉";
-                    overlaySubtitle.textContent = "멋진 전략으로 상대를 제압했습니다!";
-                    overlayIcon.className = "w-16 h-16 rounded-2xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 flex items-center justify-center text-3xl animate-bounce";
-                    overlayIcon.innerHTML = `<i class="fa-solid fa-trophy text-amber-400"></i>`;
-                    statusTag.className = "px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 mb-1";
-                    statusTag.textContent = "승리!";
-                    triggerConfetti();
-                } else {
-                    overlayTitle.textContent = "패배했습니다...";
-                    overlaySubtitle.textContent = "다음 판에서 복수해보세요!";
-                    overlayIcon.className = "w-16 h-16 rounded-2xl bg-rose-500/20 text-rose-400 border border-rose-500/40 flex items-center justify-center text-3xl";
-                    overlayIcon.innerHTML = `<i class="fa-solid fa-face-frown"></i>`;
-                    statusTag.className = "px-3 py-1 rounded-full text-xs font-bold bg-rose-500/20 text-rose-400 border border-rose-500/30 mb-1";
-                    statusTag.textContent = "패배";
-                }
-
-                // Rematch Status UI Feedback
-                const btnRematch = document.getElementById('btnRematch');
-                if (room.rematchRequest && room.rematchRequest[myRole]) {
-                    btnRematch.innerHTML = `<i class="fa-solid fa-spinner animate-spin"></i> 상대 응답 대기...`;
-                    btnRematch.disabled = true;
-                    btnRematch.className = "px-5 py-2.5 rounded-xl bg-slate-800 text-slate-400 font-bold text-sm cursor-not-allowed border border-slate-700 flex items-center gap-2";
-                } else {
-                    btnRematch.innerHTML = `<i class="fa-solid fa-rotate-right"></i> 다시 하기`;
-                    btnRematch.disabled = false;
-                    btnRematch.className = "px-5 py-2.5 rounded-xl bg-gradient-to-r from-brand-600 to-brand-500 hover:from-brand-500 hover:to-brand-400 text-white font-bold text-sm shadow-lg transition-all flex items-center gap-2";
-                }
-            }
-        }
-
-        function getMathCards(room, role) {
-            const roleOffset = role === 'P1' ? 101 : 907;
-            return Array.from({ length: 5 }, (_, i) => {
-                const n = Math.abs(Math.sin(room.mathSeed + roleOffset + room.mathRound * 97 + i * 31) * 100000) % 40;
-                return { value: Math.floor(n) + 1, suit: ['♠', '♥', '♦', '♣'][Math.floor(n) % 4] };
+            let peerId = battleContext.peerId || prompt('방장 Peer ID를 입력하세요.');
+            if (!peerId) return false;
+            battlePeer = new Peer();
+            return await new Promise(resolve => {
+                let attempts = 0;
+                const connect = () => {
+                    if (attempts++ >= 20) { alert('방장 Peer에 연결하지 못했습니다. Peer ID를 확인하세요.'); resolve(false); return; }
+                    const connection = battlePeer.connect(peerId, { reliable: true, metadata: { nickname: battleContext.nickname } });
+                    connection.on('open', () => {
+                        battleConnection = connection;
+                        battleSyncReady = true;
+                        connection.send({ type: 'JOIN' });
+                        resolve(true);
+                    });
+                    connection.on('data', handleBattleMessage);
+                    connection.on('error', () => setTimeout(connect, 700));
+                    connection.on('close', () => { if (!battleSyncReady) setTimeout(connect, 700); });
+                };
+                battlePeer.on('open', connect);
+                battlePeer.on('error', error => {
+                    console.error('PeerJS client setup failed:', error);
+                    if (error.type === 'peer-unavailable') setTimeout(connect, 700);
+                    else resolve(false);
+                });
             });
         }
 
-        function mathExpressionValue() {
-            const cards = getMathCards(state.roomData, state.isHost ? 'P1' : 'P2');
-            const indices = [0, 1, 2].map(i => Number(document.getElementById(`mathN${i}`).value));
-            const nums = indices.map(i => cards[i].value);
-            const ops = [document.getElementById('mathOp0').value, document.getElementById('mathOp1').value];
-            let value;
-            if ((ops[0] === '*' || ops[0] === '/') && (ops[1] === '+' || ops[1] === '-')) {
-                const mid = ops[0] === '*' ? nums[0] * nums[1] : nums[0] / nums[1];
-                value = ops[1] === '+' ? mid + nums[2] : mid - nums[2];
-            } else if ((ops[1] === '*' || ops[1] === '/') && (ops[0] === '+' || ops[0] === '-')) {
-                const mid = ops[1] === '*' ? nums[1] * nums[2] : nums[1] / nums[2];
-                value = ops[0] === '+' ? nums[0] + mid : nums[0] - mid;
+        function handleBattleMessage(message) {
+            if (!message) return;
+            if (message.type === 'JOIN' && battleContext.role === 'P1') {
+                battleConnection?.send({ type: 'BATTLE_STATE', payload: battleRoom.cardBattle });
+            } else if (message.type === 'BATTLE_PATCH' && battleContext.role === 'P1') {
+                applyBattlePatch(message.payload || {});
+                battleConnection?.send({ type: 'BATTLE_STATE', payload: battleRoom.cardBattle });
+                applyBattleState(battleRoom.cardBattle);
+            } else if (message.type === 'BATTLE_STATE' && message.payload) {
+                battleRoom.cardBattle = message.payload;
+                applyBattleState(message.payload);
+            }
+        }
+
+        function applyBattlePatch(patch) {
+            const shared = { ...(battleRoom.cardBattle || emptyBattleState()) };
+            for (const [key, value] of Object.entries(patch)) {
+                const parts = key.split('.');
+                let target = shared;
+                for (const part of parts.slice(0, -1)) target = target[part] = { ...(target[part] || {}) };
+                target[parts[parts.length - 1]] = value;
+            }
+            battleRoom.cardBattle = shared;
+        }
+
+        async function updateSharedBattle(patch) {
+            if (!battleSyncReady || !battleConnection && battleContext.role === 'P2') throw new Error('Peer connection is not ready');
+            if (battleContext.role === 'P1') {
+                applyBattlePatch(patch);
+                battleConnection?.send({ type: 'BATTLE_STATE', payload: battleRoom.cardBattle });
+                applyBattleState(battleRoom.cardBattle);
             } else {
-                const mid = ops[0] === '+' ? nums[0] + nums[1] : ops[0] === '-' ? nums[0] - nums[1] : ops[0] === '*' ? nums[0] * nums[1] : nums[0] / nums[1];
-                value = ops[1] === '+' ? mid + nums[2] : ops[1] === '-' ? mid - nums[2] : ops[1] === '*' ? mid * nums[2] : mid / nums[2];
+                battleConnection.send({ type: 'BATTLE_PATCH', payload: patch });
             }
-            return Number.isFinite(value) ? Math.round(value * 100) / 100 : null;
         }
-
-        function updateMathPreview() {
-            if (!state.roomData || state.roomData.gameType !== 'mathcards') return;
-            const picks = [0, 1, 2].map(i => document.getElementById(`mathN${i}`).value);
-            if (new Set(picks).size !== picks.length) {
-                document.getElementById('mathPreview').textContent = '서로 다른 숫자 카드 3장을 선택하세요';
-                document.getElementById('btnSubmitMath').disabled = true;
-                return;
-            }
-            const value = mathExpressionValue();
-            document.getElementById('mathPreview').textContent = value === null ? '0으로 나눌 수 없습니다' : `결과: ${value}`;
-            document.getElementById('btnSubmitMath').disabled = value === null;
-        }
-
-        function renderMathGameState(room) {
-            document.getElementById('mathGameView').classList.remove('hidden');
-            document.getElementById('btnDeleteMathRoom').classList.toggle('hidden', !state.isHost);
-            document.getElementById('gameBoard').closest('.relative').style.display = 'none';
-            document.getElementById('gameModeDisplay').parentElement.parentElement.style.display = 'none';
-            document.getElementById('p1Card').parentElement.style.display = 'none';
-            document.getElementById('gameModeDisplay').textContent = '수식 카드 대전';
-            const role = state.isHost ? 'P1' : 'P2';
-            const cards = getMathCards(room, role);
-            document.getElementById('mathRound').textContent = room.mathRound || 1;
-            document.getElementById('mathScore').textContent = `${room.mathScores?.P1 || 0} : ${room.mathScores?.P2 || 0}`;
-            document.getElementById('mathP1Name').textContent = `${room.hostName || 'P1'} (P1)`;
-            document.getElementById('mathP2Name').textContent = `${room.guestName || '상대 대기 중'} (P2)`;
-            document.getElementById('mathNumberCards').textContent = cards.map(c => `${c.suit}${c.value}`).join('　');
-            for (let slot = 0; slot < 3; slot++) {
-                const select = document.getElementById(`mathN${slot}`);
-                const previous = select.value;
-                select.innerHTML = cards.map((c, i) => `<option value="${i}">${c.suit}${c.value}</option>`).join('');
-                if (previous) select.value = previous;
-            }
-            const submissions = room.mathSubmissions || {};
-            const p1 = submissions.P1;
-            const p2 = submissions.P2;
-            document.getElementById('mathP1Result').textContent = p1 ? `${p1.value} 제출` : '미제출';
-            document.getElementById('mathP2Result').textContent = p2 ? `${p2.value} 제출` : '미제출';
-            const mySubmission = submissions[role];
-            const bothSubmitted = !!(p1 && p2);
-            document.getElementById('mathBuilder').classList.toggle('hidden', !!mySubmission || room.status !== 'in-progress');
-            document.getElementById('mathWaiting').classList.toggle('hidden', (!mySubmission && room.status !== 'waiting') || bothSubmitted);
-            document.getElementById('mathWaiting').textContent = room.status === 'waiting' ? '상대 플레이어가 방에 입장하면 대전이 시작됩니다.' : '제출 완료! 상대가 식을 완성할 때까지 기다리는 중입니다.';
-            document.getElementById('mathRoundActions').classList.toggle('hidden', !bothSubmitted);
-            document.getElementById('btnNextMathRound').classList.toggle('hidden', !state.isHost || room.status === 'finished');
-            if (bothSubmitted) {
-                const outcome = p1.value === p2.value ? '무승부' : p1.value > p2.value ? `${room.hostName} 승리` : `${room.guestName} 승리`;
-                const finalOutcome = room.winner === 'draw' ? '최종 무승부' : room.winner === 'P1' ? `${room.hostName} 최종 승리` : `${room.guestName} 최종 승리`;
-                document.getElementById('mathRoundMessage').textContent = room.status === 'finished' ? `${finalOutcome} · 점수 ${room.mathScores.P1}:${room.mathScores.P2}` : `라운드 ${room.mathRound} 결과 · ${outcome} (${p1.value} : ${p2.value})`;
-                document.getElementById('btnNextMathRound').textContent = room.mathRound >= 5 ? '최종 결과 확인' : '다음 라운드';
-            }
-            updateMathPreview();
-        }
-
-        ['mathN0', 'mathN1', 'mathN2', 'mathOp0', 'mathOp1'].forEach(id => document.getElementById(id).addEventListener('change', updateMathPreview));
-
-        async function persistMathPatch(room, patch) {
-            const applyPatch = (base) => {
-                const next = { ...base };
-                for (const [key, value] of Object.entries(patch)) {
-                    if (key.includes('.')) {
-                        const [root, child] = key.split('.', 2);
-                        next[root] = { ...(next[root] || {}), [child]: value };
-                    } else next[key] = value;
-                }
-                return next;
-            };
-            const updated = { ...applyPatch(room), updatedAt: Date.now() };
-            state.roomData = updated;
-            if (state.useFirebase && db) {
-                const firebasePatch = { updatedAt: serverTimestamp() };
-                for (const [key, value] of Object.entries(patch)) {
-                    if (key.startsWith('mathSubmissions.')) firebasePatch[key] = value;
-                    else firebasePatch[key] = value;
-                }
-                await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'game_rooms', room.id), firebasePatch);
-            } else {
-                const stored = JSON.parse(localStorage.getItem('arena_rooms') || '{}');
-                const latest = stored[room.id] || room;
-                const merged = { ...applyPatch(latest), updatedAt: Date.now() };
-                state.roomData = merged;
-                state.rooms[room.id] = merged;
-                localStorage.setItem('arena_rooms', JSON.stringify(state.rooms));
-                broadcastStateUpdate('ROOM_UPDATED', merged);
-            }
-            renderGameState();
-        }
-
-        window.submitMathExpression = async function() {
-            const room = state.roomData;
-            if (!room || room.status !== 'in-progress') return;
-            const role = state.isHost ? 'P1' : 'P2';
-            if (room.mathSubmissions?.[role]) return;
-            if (new Set([0, 1, 2].map(i => document.getElementById(`mathN${i}`).value)).size !== 3) return;
-            const value = mathExpressionValue();
-            if (value === null) return;
-            const cards = getMathCards(room, role);
-            const nums = [0, 1, 2].map(i => cards[Number(document.getElementById(`mathN${i}`).value)]);
-            const ops = [document.getElementById('mathOp0').value, document.getElementById('mathOp1').value];
-            const expression = `${nums[0].value} ${ops[0]} ${nums[1].value} ${ops[1]} ${nums[2].value}`;
+        async function advanceSharedRoundIfReady() {
+            if (battleContext.role !== 'P1' || advanceInProgress) return;
+            advanceInProgress = true;
             try {
-                await persistMathPatch(room, { [`mathSubmissions.${role}`]: { value, expression } });
-            } catch (error) { console.error('Math card submission failed:', error); }
-        };
-
-        window.advanceMathRound = async function() {
-            const room = state.roomData;
-            if (!room || !state.isHost || !room.mathSubmissions?.P1 || !room.mathSubmissions?.P2) return;
-            const scores = { ...(room.mathScores || { P1: 0, P2: 0 }) };
-            if (room.mathSubmissions.P1.value > room.mathSubmissions.P2.value) scores.P1++;
-            else if (room.mathSubmissions.P2.value > room.mathSubmissions.P1.value) scores.P2++;
-            if (room.mathRound >= 5) {
-                const winner = scores.P1 === scores.P2 ? 'draw' : scores.P1 > scores.P2 ? 'P1' : 'P2';
-                await persistMathPatch(room, { mathScores: scores, winner, status: 'finished' });
-            } else {
-                await persistMathPatch(room, { mathScores: scores, mathRound: room.mathRound + 1, mathSubmissions: { P1: null, P2: null } });
+                const shared = battleRoom?.cardBattle;
+                if (shared?.submissions?.P1 && shared?.submissions?.P2 && shared.ready?.P1 && shared.ready?.P2) {
+                    if (shared.round < 5) {
+                        const scores = { ...(shared.scores || { P1: 0, P2: 0 }) };
+                        if (shared.submissions.P1.value > shared.submissions.P2.value) scores.P1++;
+                        else if (shared.submissions.P2.value > shared.submissions.P1.value) scores.P2++;
+                        await updateSharedBattle({ 'round': shared.round + 1, 'scores': scores, 'submissions': {}, 'ready': {}, 'resolvedRound': shared.round });
+                    } else await updateSharedBattle({ 'round': 1, 'scores': { P1: 0, P2: 0 }, 'submissions': {}, 'ready': {}, 'resolvedRound': 0 });
+                }
+            } catch (error) {
+                console.error('Could not advance card battle round:', error);
+            } finally {
+                advanceInProgress = false;
             }
-        };
+        }
 
-        // Handle Move Action
-        window.makeMove = async function(index) {
-            const room = state.roomData;
-            if (!room || room.status !== 'in-progress') return;
+        const SUITS = ['♠', '♥', '♦', '♣'];
+        const OPERATORS = ['+', '-', '*', '/', '√', '^2'];
+        
+        let numDeck = [];
+        let opDeck = [];
+        let aiNumDeck = [];
+        let aiOpDeck = [];
+        let currentRound = 1;
+        let p1Score = 0;
+        let p2Score = 0;
+        
+        let p1Hand = [];
+        let p2Hand = [];
+        let p1Slots = [null, null, null, null, null];
+        let p2Slots = [null, null, null, null, null];
+        let selectedCard = null;
+        let bonusDrawn = false;
+        let pickPhase = 'number';
+        let turnResolved = false;
 
-            const myRole = state.isHost ? 'P1' : 'P2';
-            if (room.currentTurn !== myRole) {
-                showChatToast("시스템", "당신의 턴이 아닙니다! 기다려주세요.");
+        function createDecks() {
+            numDeck = [];
+            for (let suit of SUITS) {
+                for (let val = 1; val <= 10; val++) {
+                    numDeck.push({ type: 'num', suit, val, id: `${suit}_${val}` });
+                }
+            }
+            opDeck = [];
+            for (let op of OPERATORS) {
+                for (let copy = 1; copy <= 5; copy++) {
+                    opDeck.push({ type: 'op', val: op, id: `op_${op}_${copy}` });
+                }
+            }
+            shuffle(numDeck);
+            shuffle(opDeck);
+            aiNumDeck = numDeck.map(card => ({ ...card }));
+            aiOpDeck = opDeck.map(card => ({ ...card }));
+            shuffle(aiNumDeck);
+            shuffle(aiOpDeck);
+        }
+
+        function shuffle(arr) {
+            for (let i = arr.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [arr[i], arr[j]] = [arr[j], arr[i]];
+            }
+        }
+
+        function startNewMatch() {
+            currentRound = 1;
+            p1Score = 0;
+            p2Score = 0;
+            createDecks();
+            updateScoreBoard();
+            startRound();
+        }
+
+        function startRound() {
+            if (currentRound > 5) {
+                alert(`게임 종료! 최종 결과 - 플레이어: ${p1Score} vs AI: ${p2Score}`);
+                return;
+            }
+            
+            p1Slots = [null, null, null, null, null];
+            p2Slots = [null, null, null, null, null];
+            selectedCard = null;
+
+            p1Hand = [];
+            p2Hand = dealCards();
+            bonusDrawn = false;
+            pickPhase = 'number';
+            turnResolved = false;
+            document.getElementById('deck-picker').style.pointerEvents = 'auto';
+            document.getElementById('p1-hand').style.pointerEvents = 'auto';
+            document.getElementById('p1-slots').style.pointerEvents = 'auto';
+
+            renderHand();
+            renderDeckPicker();
+            renderSlots();
+            updatePreview();
+            
+            document.getElementById('round-num').textContent = currentRound;
+            document.getElementById('p2-preview').textContent = "결과: -";
+            document.getElementById('result-overlay').classList.remove('visible');
+            document.getElementById('result-overlay').setAttribute('aria-hidden', 'true');
+            document.getElementById('deal-status').textContent = `뒤집힌 숫자 카드 ${numDeck.length}장 중 3장을 선택하세요.`;
+        }
+
+        function renderDeckPicker() {
+            const picker = document.getElementById('deck-picker');
+            picker.innerHTML = '';
+            if (pickPhase === 'arrange') {
+                picker.style.display = 'none';
+                return;
+            }
+            picker.style.display = 'grid';
+            const deck = pickPhase === 'number' ? numDeck : opDeck;
+            deck.forEach(card => {
+                const back = document.createElement('button');
+                back.type = 'button';
+                back.className = 'deck-card-back';
+                back.textContent = '';
+                back.setAttribute('aria-label', '뒤집힌 카드 선택');
+                back.onclick = () => selectDeckCard(card);
+                picker.appendChild(back);
+            });
+        }
+
+        function selectDeckCard(card) {
+            if (pickPhase === 'number') {
+                const index = numDeck.findIndex(item => item.id === card.id);
+                if (index < 0 || p1Hand.filter(item => item.type === 'num').length >= 3) return;
+                numDeck.splice(index, 1);
+                p1Hand.push(card);
+                const numberCount = p1Hand.filter(item => item.type === 'num').length;
+                if (numberCount === 3) {
+                    pickPhase = 'bonus';
+                    document.getElementById('deal-status').textContent = `숫자 3장을 골랐습니다. 뒤집힌 보너스 카드 ${opDeck.length}장 중 2장을 선택하세요.`;
+                } else {
+                    document.getElementById('deal-status').textContent = `숫자 카드 ${numberCount}/3장 선택. 뒤집힌 카드 ${numDeck.length}장 남음.`;
+                }
+            } else if (pickPhase === 'bonus' || pickPhase === 'bonus-extra') {
+                const index = opDeck.findIndex(item => item.id === card.id);
+                if (index < 0) return;
+                opDeck.splice(index, 1);
+                p1Hand.push(card);
+                const bonusCards = p1Hand.filter(item => item.type === 'op');
+                const arithmeticCount = bonusCards.filter(item => ['+', '-', '/', '*'].includes(item.val)).length;
+                if (arithmeticCount >= 2) {
+                    finishCardPicking();
+                } else {
+                    pickPhase = bonusCards.length < 2 ? 'bonus' : 'bonus-extra';
+                    document.getElementById('deal-status').textContent = `+ − ÷ × 카드 ${arithmeticCount}/2장입니다. 조건을 채울 때까지 보너스 카드를 계속 선택하세요. 뒤집힌 카드 ${opDeck.length}장 남음.`;
+                }
+            }
+            renderHand();
+            renderDeckPicker();
+            updatePreview();
+        }
+
+        function finishCardPicking() {
+            pickPhase = 'arrange';
+            bonusDrawn = true;
+            const numberCards = p1Hand
+                .filter(card => card.type === 'num')
+                .sort((a, b) => b.val - a.val);
+            numberCards.forEach((card, index) => {
+                p1Slots[index * 2] = { type: 'num', card, unary: null };
+                removeFromHand(card);
+            });
+            renderSlots();
+            document.getElementById('deal-status').textContent = '카드 선택이 끝났습니다. 수식에 카드를 배치하세요.';
+        }
+
+        function dealCards() {
+            let hand = [];
+            let unaryCount = 0;
+
+            for (let i = 0; i < 3; i++) {
+                if (aiNumDeck.length > 0) hand.push(aiNumDeck.pop());
+            }
+
+            for (let i = 0; i < 2; i++) {
+                if (aiOpDeck.length > 0) {
+                    let card = aiOpDeck.pop();
+                    hand.push(card);
+                    if (card.val === '√' || card.val === '^2') unaryCount++;
+                }
+            }
+
+            while (unaryCount > 0 && aiOpDeck.length > 0) {
+                hand.push(aiOpDeck.pop());
+                unaryCount--;
+            }
+
+            return hand;
+        }
+
+        function renderHand() {
+            const container = document.getElementById('p1-hand');
+            container.innerHTML = '';
+            
+            p1Hand.forEach(card => {
+                if (!card) return;
+                const div = document.createElement('div');
+                const isRed = card.suit === '♥' || card.suit === '♦';
+                
+                if (card.type === 'num') {
+                    div.className = `card ${isRed ? 'red' : ''}`;
+                    div.innerHTML = `<div>${card.val}</div><div style="font-size:1.2rem;text-align:center;">${card.suit}</div><div style="text-align:right;">${card.val}</div>`;
+                } else {
+                    const isUnary = card.val === '√' || card.val === '^2';
+                    div.className = `card op-card ${isUnary ? 'unary-card' : ''}`;
+                    div.textContent = card.val;
+                }
+
+                div.onclick = () => {
+                    if (pickPhase === 'arrange') selectCard(card, div);
+                };
+                if (card.type === 'num') {
+                    div.ondblclick = (event) => {
+                        event.preventDefault();
+                        if (pickPhase !== 'arrange') return;
+                        selectedCard = card;
+                        registerSelectedNumber();
+                    };
+                }
+                container.appendChild(div);
+            });
+        }
+
+        function selectCard(card, element) {
+            document.querySelectorAll('#p1-hand .card').forEach(el => el.style.border = 'none');
+            selectedCard = card;
+            element.style.border = '2px solid #f59e0b';
+        }
+
+        function renderSlots() {
+            const slots = document.querySelectorAll('#p1-slots .slot');
+            slots.forEach((slot, idx) => {
+                slot.onclick = () => placeInSlot(idx);
+                slot.innerHTML = '';
+                
+                const item = p1Slots[idx];
+                if (item) {
+                    if (item.type === 'num') {
+                        const isRed = item.card.suit === '♥' || item.card.suit === '♦';
+                        let html = `<div class="card ${isRed ? 'red' : ''}" style="width:100%;height:100%;">
+                            <div>${item.card.val}</div>
+                            <div style="text-align:center;">${item.card.suit}</div>
+                        </div>`;
+                        if (item.unary) {
+                            html += `<div class="attached-unary">${item.unary.val}</div>`;
+                        }
+                        slot.innerHTML = html;
+                    } else if (item.type === 'op') {
+                        slot.innerHTML = `<div class="card op-card" style="width:100%;height:100%;">${item.card.val}</div>`;
+                    }
+                }
+            });
+        }
+
+        function placeInSlot(idx) {
+            if (pickPhase !== 'arrange') return;
+            if (!selectedCard) return;
+            if (selectedCard.type === 'num') {
+                registerSelectedNumber(idx);
                 return;
             }
 
-            if (room.boardState[index] !== null) return; // Cell occupied
+            const isNumSlot = idx % 2 === 0;
 
-            const newBoardState = [...room.boardState];
-            newBoardState[index] = myRole;
-
-            const nextTurn = myRole === 'P1' ? 'P2' : 'P1';
-            const winner = checkWinner(newBoardState, room.boardSize, room.gameType);
-            const isBoardFull = newBoardState.every(c => c !== null);
-
-            let newStatus = room.status;
-            let finalWinner = room.winner;
-
-            if (winner) {
-                newStatus = 'finished';
-                finalWinner = winner;
-            } else if (isBoardFull) {
-                newStatus = 'finished';
-                finalWinner = 'draw';
-            }
-
-            const updatedRoom = {
-                ...room,
-                boardState: newBoardState,
-                currentTurn: nextTurn,
-                status: newStatus,
-                winner: finalWinner,
-                updatedAt: Date.now()
-            };
-
-            state.roomData = updatedRoom;
-            renderGameState();
-
-            if (state.useFirebase && db) {
-                try {
-                    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'game_rooms', room.id), updatedRoom);
-                } catch (e) {
-                    console.error("Error updating move on Firebase:", e);
+            if (selectedCard.type === 'num' && isNumSlot) {
+                if (!p1Slots[idx]) {
+                    p1Slots[idx] = { type: 'num', card: selectedCard, unary: null };
+                    removeFromHand(selectedCard);
                 }
-            } else {
-                state.rooms[room.id] = updatedRoom;
-                localStorage.setItem('arena_rooms', JSON.stringify(state.rooms));
-                broadcastStateUpdate('ROOM_UPDATED', updatedRoom);
+            } else if (selectedCard.type === 'op') {
+                const isUnary = selectedCard.val === '√' || selectedCard.val === '^2';
+                if (isUnary && isNumSlot && p1Slots[idx]) {
+                    p1Slots[idx].unary = selectedCard;
+                    removeFromHand(selectedCard);
+                } else if (!isUnary && !isNumSlot && !p1Slots[idx]) {
+                    p1Slots[idx] = { type: 'op', card: selectedCard };
+                    removeFromHand(selectedCard);
+                }
             }
-        };
 
-        // --- WINNER DETERMINATION ALGORITHM (TIC-TAC-TOE & GOMOKU) ---
-        function checkWinner(board, size, type) {
-            const winLength = type === 'gomoku' ? 5 : 3;
+            selectedCard = null;
+            renderHand();
+            renderSlots();
+            updatePreview();
+        }
 
-            const getCell = (r, c) => {
-                if (r < 0 || r >= size || c < 0 || c >= size) return null;
-                return board[r * size + c];
-            };
+        function registerSelectedNumber(targetIdx = null) {
+            if (pickPhase !== 'arrange') return;
+            if (!selectedCard || selectedCard.type !== 'num') return;
+            const idx = targetIdx === null ? [0, 2, 4].find(i => !p1Slots[i]) : targetIdx;
+            if (idx === undefined || idx % 2 !== 0 || p1Slots[idx]) return;
+            p1Slots[idx] = { type: 'num', card: selectedCard, unary: null };
+            removeFromHand(selectedCard);
+            selectedCard = null;
+            renderHand();
+            renderSlots();
+            updatePreview();
+        }
 
-            const directions = [
-                [0, 1],   // Horizontal
-                [1, 0],   // Vertical
-                [1, 1],   // Diagonal Down-Right
-                [1, -1]   // Diagonal Down-Left
+        function removeFromHand(card) {
+            const idx = p1Hand.findIndex(c => c && c.id === card.id);
+            if (idx !== -1) p1Hand.splice(idx, 1);
+        }
+
+        function resetCurrentSlots() {
+            p1Slots.forEach(item => {
+                if (item) {
+                    if (item.card) p1Hand.push(item.card);
+                    if (item.unary) p1Hand.push(item.unary);
+                }
+            });
+            p1Slots = [null, null, null, null, null];
+            selectedCard = null;
+            renderHand();
+            renderSlots();
+            updatePreview();
+        }
+
+        function calculateExpression(slots) {
+            if (slots.includes(null)) return null;
+
+            let vals = [];
+            for (let i = 0; i < 5; i += 2) {
+                let v = slots[i].card.val;
+                if (slots[i].unary) {
+                    if (slots[i].unary.val === '√') v = Math.sqrt(v);
+                    if (slots[i].unary.val === '^2') v = Math.pow(v, 2);
+                }
+                vals.push(v);
+            }
+
+            let op1 = slots[1].card.val;
+            let op2 = slots[3].card.val;
+
+            let res = 0;
+            if ((op1 === '*' || op1 === '/') && (op2 === '+' || op2 === '-')) {
+                let temp = evalStep(vals[0], op1, vals[1]);
+                res = evalStep(temp, op2, vals[2]);
+            } else if ((op2 === '*' || op2 === '/') && (op1 === '+' || op1 === '-')) {
+                let temp = evalStep(vals[1], op2, vals[2]);
+                res = evalStep(vals[0], op1, temp);
+            } else {
+                let temp = evalStep(vals[0], op1, vals[1]);
+                res = evalStep(temp, op2, vals[2]);
+            }
+
+            return isFinite(res) ? Math.round(res * 100) / 100 : null;
+        }
+
+        function evalStep(a, op, b) {
+            if (op === '+') return a + b;
+            if (op === '-') return a - b;
+            if (op === '*') return a * b;
+            if (op === '/') return b !== 0 ? a / b : NaN;
+            return 0;
+        }
+
+        function updatePreview() {
+            const res = calculateExpression(p1Slots);
+            const previewEl = document.getElementById('p1-preview');
+
+            if (res !== null && bonusDrawn) {
+                previewEl.textContent = `계산 결과: ${res}`;
+                submitTurn();
+            } else {
+                previewEl.textContent = bonusDrawn ? "수식을 완성해주세요" : "보너스 카드를 먼저 선택해주세요";
+            }
+        }
+
+        function submitTurn() {
+            if (!bonusDrawn || turnResolved) return;
+            const p1Res = calculateExpression(p1Slots);
+            if (p1Res === null) return;
+            turnResolved = true;
+            if (battleContext.roomId && battleSyncReady) {
+                const nums = p1Slots.filter((_, index) => index % 2 === 0).map(slot => slot.card.val);
+                const ops = [p1Slots[1].card.val, p1Slots[3].card.val];
+                const expression = `${nums[0]} ${ops[0]} ${nums[1]} ${ops[1]} ${nums[2]}`;
+                document.getElementById('p1-status').textContent = '제출 완료';
+                document.getElementById('deal-status').textContent = '제출 완료! 상대가 수식을 완성할 때까지 기다리는 중입니다.';
+                document.getElementById('deck-picker').style.pointerEvents = 'none';
+                updateSharedBattle({ [`submissions.${battleContext.role}`]: { value: p1Res, expression } })
+                    .catch(error => {
+                        turnResolved = false;
+                        document.getElementById('deck-picker').style.pointerEvents = 'auto';
+                        document.getElementById('deal-status').textContent = '제출에 실패했습니다. 네트워크 연결을 확인하고 다시 시도하세요.';
+                        console.error('Card battle submission failed:', error);
+                    });
+                return;
+            }
+            const p2Res = runAI();
+
+            document.getElementById('p2-preview').textContent = `계산 결과: ${p2Res}`;
+            let result;
+            if (p1Res > p2Res) {
+                p1Score++;
+                result = '승리';
+            } else if (p2Res > p1Res) {
+                p2Score++;
+                result = '패배';
+            } else {
+                result = '무승부';
+            }
+            updateScoreBoard();
+
+            const isFinalRound = currentRound === 5;
+            document.getElementById('result-title').textContent = isFinalRound ? '5게임 완료' : `${currentRound}게임 결과: ${result}`;
+            document.getElementById('result-detail').textContent = isFinalRound
+                ? `이번 게임: 나 ${p1Res} : ${p2Res} AI (${result})\n최종 점수: 나 ${p1Score} : ${p2Score} AI`
+                : `계산 결과 — 나 ${p1Res} : ${p2Res} AI\n현재 점수 — 나 ${p1Score} : ${p2Score} AI`;
+            document.getElementById('result-action').textContent = isFinalRound ? '새 게임 시작' : '결과 확인';
+            const overlay = document.getElementById('result-overlay');
+            overlay.classList.add('visible');
+            overlay.setAttribute('aria-hidden', 'false');
+        }
+
+        function confirmResult() {
+            if (battleContext.roomId && battleSyncReady) {
+                const shared = battleRoom?.cardBattle || emptyBattleState();
+                if (shared.ready?.[battleContext.role]) return;
+                document.getElementById('result-action').disabled = true;
+                document.getElementById('result-action').textContent = '상대 확인 대기 중';
+                updateSharedBattle({ [`ready.${battleContext.role}`]: true }).then(advanceSharedRoundIfReady).catch(error => {
+                    document.getElementById('result-action').disabled = false;
+                    console.error('Could not confirm card battle result:', error);
+                });
+                return;
+            }
+            if (currentRound === 5) {
+                startNewMatch();
+                return;
+            }
+            currentRound++;
+            startRound();
+        }
+
+        function runAI() {
+            let nums = p2Hand.filter(c => c.type === 'num');
+            let ops = p2Hand.filter(c => c.type === 'op' && c.val !== '√' && c.val !== '^2');
+            let unaries = p2Hand.filter(c => c.type === 'op' && (c.val === '√' || c.val === '^2'));
+
+            if (nums.length < 3 || ops.length < 2) return 0;
+
+            let dummySlots = [
+                { type: 'num', card: nums[0], unary: unaries[0] || null },
+                { type: 'op', card: ops[0] },
+                { type: 'num', card: nums[1], unary: null },
+                { type: 'op', card: ops[1] },
+                { type: 'num', card: nums[2], unary: null }
             ];
 
-            for (let r = 0; r < size; r++) {
-                for (let c = 0; c < size; c++) {
-                    const player = getCell(r, c);
-                    if (!player) continue;
-
-                    for (const [dr, dc] of directions) {
-                        let count = 1;
-                        for (let step = 1; step < winLength; step++) {
-                            if (getCell(r + dr * step, c + dc * step) === player) {
-                                count++;
-                            } else {
-                                break;
-                            }
-                        }
-                        if (count >= winLength) return player;
-                    }
-                }
-            }
-            return null;
+            return calculateExpression(dummySlots) || 0;
         }
 
-        // --- TURN TIMER CONTROL ---
-        function startTurnTimer() {
-            resetTurnTimer(false);
-            state.timerSeconds = 30;
-            document.getElementById('timerText').textContent = state.timerSeconds;
-
-            state.timerInterval = setInterval(() => {
-                state.timerSeconds--;
-                document.getElementById('timerText').textContent = state.timerSeconds;
-
-                if (state.timerSeconds <= 0) {
-                    resetTurnTimer(false);
-                    handleTurnTimeout();
-                }
-            }, 1000);
+        function updateScoreBoard() {
+            document.getElementById('p1-score').textContent = p1Score;
+            document.getElementById('p2-score').textContent = p2Score;
         }
 
-        function resetTurnTimer(resetDisplay = true) {
-            if (state.timerInterval) {
-                clearInterval(state.timerInterval);
-                state.timerInterval = null;
-            }
-            if (resetDisplay) {
-                document.getElementById('timerText').textContent = "30";
-            }
-        }
-
-        function handleTurnTimeout() {
-            const room = state.roomData;
-            if (!room || room.status !== 'in-progress') return;
-
-            const myRole = state.isHost ? 'P1' : 'P2';
-            // If timeout occurs on current player's turn, auto pass or forfeit
-            if (room.currentTurn === myRole) {
-                showChatToast("시간 초과", "30초 초과로 상대방에게 턴이 넘어갑니다!");
-                const nextTurn = myRole === 'P1' ? 'P2' : 'P1';
-                
-                const updatedRoom = {
-                    ...room,
-                    currentTurn: nextTurn,
-                    updatedAt: Date.now()
-                };
-                
-                state.roomData = updatedRoom;
-                renderGameState();
-
-                if (state.useFirebase && db) {
-                    updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'game_rooms', room.id), {
-                        currentTurn: nextTurn,
-                        updatedAt: serverTimestamp()
-                    });
-                } else {
-                    state.rooms[room.id] = updatedRoom;
-                    localStorage.setItem('arena_rooms', JSON.stringify(state.rooms));
-                    broadcastStateUpdate('ROOM_UPDATED', updatedRoom);
-                }
-            }
-        }
-
-        // --- REMATCH & ROOM LEAVE ACTIONS ---
-        window.requestRematch = async function() {
-            const room = state.roomData;
-            if (!room) return;
-
-            const myRole = state.isHost ? 'P1' : 'P2';
-            const otherRole = myRole === 'P1' ? 'P2' : 'P1';
-
-            const newRematchState = { ...room.rematchRequest, [myRole]: true };
-
-            // If both players requested rematch -> reset board
-            if (newRematchState.P1 && newRematchState.P2) {
-                const resetRoom = {
-                    ...room,
-                    status: 'in-progress',
-                    boardState: Array(room.boardSize * room.boardSize).fill(null),
-                    currentTurn: 'P1',
-                    winner: null,
-                    rematchRequest: { P1: false, P2: false },
-                    updatedAt: Date.now()
-                };
-
-                state.roomData = resetRoom;
-                renderGameState();
-
-                if (state.useFirebase && db) {
-                    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'game_rooms', room.id), resetRoom);
-                } else {
-                    state.rooms[room.id] = resetRoom;
-                    localStorage.setItem('arena_rooms', JSON.stringify(state.rooms));
-                    broadcastStateUpdate('ROOM_UPDATED', resetRoom);
-                }
-            } else {
-                // Wait for other player's approval
-                const updatedRoom = {
-                    ...room,
-                    rematchRequest: newRematchState,
-                    updatedAt: Date.now()
-                };
-                state.roomData = updatedRoom;
-                renderGameState();
-
-                if (state.useFirebase && db) {
-                    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'game_rooms', room.id), {
-                        [`rematchRequest.${myRole}`]: true
-                    });
-                } else {
-                    state.rooms[room.id] = updatedRoom;
-                    localStorage.setItem('arena_rooms', JSON.stringify(state.rooms));
-                    broadcastStateUpdate('ROOM_UPDATED', updatedRoom);
-                }
+        window.confirmResult = confirmResult;
+        window.copyBattlePeerId = async function() {
+            if (!battleContext.peerId) return;
+            try {
+                await navigator.clipboard.writeText(battleContext.peerId);
+                document.getElementById('btn-copy-peer-id').textContent = '복사됨';
+            } catch (error) {
+                window.prompt('Peer ID를 복사하세요.', battleContext.peerId);
             }
         };
 
-        window.confirmLeaveRoom = function() {
-            if (confirm("정말로 대전 방에서 나가시겠습니까?")) {
-                leaveRoom();
+        async function startGame() {
+            if (battleContext.roomId) {
+                const connected = await initializeBattleSync();
+                if (!connected) return;
+                document.querySelector('#p2-zone h3').textContent = '상대 플레이어';
+                document.querySelector('#p1-zone h3').textContent = `${battleContext.nickname || '나'} (${battleContext.role})`;
+                document.querySelector('h1').textContent = '수식 카드 온라인 대전';
+                document.querySelector('.status-board').children[1].childNodes[0].textContent = 'P1 점수: ';
+                document.querySelector('.status-board').children[2].childNodes[0].textContent = 'P2 점수: ';
+                document.getElementById('p2-status').textContent = '수식 작성 중';
             }
-        };
-
-        window.leaveRoom = async function() {
-            resetTurnTimer();
-            const roomId = state.currentRoomId;
-            if (roomId && state.rooms[roomId]) {
-                const room = state.rooms[roomId];
-
-                if (state.isHost) {
-                    // Host leaves -> delete room
-                    if (state.useFirebase && db) {
-                        try {
-                            await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'game_rooms', roomId));
-                        } catch(e){}
-                    } else {
-                        delete state.rooms[roomId];
-                        localStorage.setItem('arena_rooms', JSON.stringify(state.rooms));
-                        broadcastStateUpdate('SYNC_ROOMS', state.rooms);
-                    }
-                } else {
-                    // Guest leaves -> set room status back to waiting
-                    const updatedRoom = {
-                        ...room,
-                        guestId: null,
-                        guestName: null,
-                        status: 'waiting',
-                        boardState: Array(room.boardSize * room.boardSize).fill(null),
-                        mathRound: 1,
-                        mathScores: { P1: 0, P2: 0 },
-                        mathSubmissions: { P1: null, P2: null },
-                        mathSeed: Math.floor(Math.random() * 2147483647),
-                        winner: null,
-                        currentTurn: 'P1',
-                        rematchRequest: { P1: false, P2: false },
-                        updatedAt: Date.now()
-                    };
-
-                    if (state.useFirebase && db) {
-                        try {
-                            await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'game_rooms', roomId), updatedRoom);
-                        } catch(e){}
-                    } else {
-                        state.rooms[roomId] = updatedRoom;
-                        localStorage.setItem('arena_rooms', JSON.stringify(state.rooms));
-                        broadcastStateUpdate('ROOM_UPDATED', updatedRoom);
-                    }
-                }
-            }
-
-            state.currentRoomId = null;
-            state.roomData = null;
-            state.isHost = false;
-            switchStage('stageLobby');
-        };
-
-        // --- QUICK REACTION CHAT & TOASTS ---
-        window.sendQuickEmote = function(text) {
-            if (!state.currentRoomId) return;
-            showChatToast(state.nickname, text);
-            broadcastStateUpdate('CHAT_EMOTE', {
-                roomId: state.currentRoomId,
-                user: state.nickname,
-                text: text
-            });
-        };
-
-        function showChatToast(user, text) {
-            const toast = document.getElementById('chatToast');
-            document.getElementById('chatToastUser').textContent = user;
-            document.getElementById('chatToastAvatar').textContent = user.charAt(0).toUpperCase();
-            document.getElementById('chatToastText').textContent = text;
-
-            toast.classList.remove('opacity-0', 'translate-y-10', 'pointer-events-none');
-            toast.classList.add('opacity-100', 'translate-y-0');
-
-            setTimeout(() => {
-                toast.classList.remove('opacity-100', 'translate-y-0');
-                toast.classList.add('opacity-0', 'translate-y-10', 'pointer-events-none');
-            }, 2500);
+            startNewMatch();
+            if (battleContext.roomId) applyBattleState(battleRoom.cardBattle || emptyBattleState());
         }
 
-        // --- UTILITY HELPERS ---
-        function switchStage(stageId) {
-            ['stageNickname', 'stageLobby', 'stageGame'].forEach(id => {
-                const el = document.getElementById(id);
-                if (id === stageId) {
-                    el.classList.remove('hidden');
-                    if (id === 'stageLobby') el.classList.add('flex');
-                    if (id === 'stageGame') el.classList.add('flex');
-                } else {
-                    el.classList.add('hidden');
-                    el.classList.remove('flex');
-                }
-            });
-        }
-
-        function triggerConfetti() {
-            if (typeof confetti === 'function') {
-                confetti({
-                    particleCount: 100,
-                    spread: 70,
-                    origin: { y: 0.6 }
-                });
-            }
-        }
-
-        function escapeHtml(str) {
-            if (!str) return '';
-            return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-        }
-
-        // --- ON PAGE LOAD ---
-        window.addEventListener('load', () => {
-            initBackend();
-        });
+        startGame();
     </script>
 </body>
 </html>
