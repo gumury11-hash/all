@@ -6,12 +6,22 @@
     <title>카드 수식 대결</title>
     <style>
         :root {
-            --bg-color: #f3f7fc;
-            --card-bg: #ffffff;
-            --primary-color: #3978d4;
-            --accent-color: #e9a329;
-            --danger-color: #dc4f5b;
-            --text-color: #233247;
+            --bg-1: #020617;
+            --bg-2: #0f172a;
+            --bg-3: #111827;
+            --glass: rgba(15, 23, 42, 0.75);
+            --glass-card: rgba(30, 41, 59, 0.7);
+            --stroke: rgba(148, 163, 184, 0.15);
+            --brand: #6366f1;
+            --brand-strong: #4f46e5;
+            --cyan: #06b6d4;
+            --magenta: #ec4899;
+            --amber: #f59e0b;
+            --emerald: #10b981;
+            --rose: #fb7185;
+            --card-bg: #f8fafc;
+            --text: #f8fafc;
+            --muted: #cbd5e1;
         }
 
         * {
@@ -22,174 +32,274 @@
         }
 
         body {
-            font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
-            background: linear-gradient(180deg, #f8fbff 0%, var(--bg-color) 100%);
-            color: var(--text-color);
+            font-family: 'Plus Jakarta Sans', 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: radial-gradient(circle at 50% 0%, #1e1b4b 0%, #0f172a 60%, #020617 100%);
+            color: var(--text);
             min-height: 100svh;
             display: flex;
             flex-direction: column;
             align-items: center;
-            padding: 15px;
+            padding: 16px;
         }
 
-        header {
-            text-align: center;
-            margin-bottom: 15px;
+        .page-shell {
+            width: min(100%, 980px);
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+        }
+
+        .arena-header {
+            width: 100%;
+            background: var(--glass);
+            border: 1px solid var(--stroke);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-radius: 22px;
+            padding: 18px 20px;
+            box-shadow: 0 20px 35px rgba(15, 23, 42, 0.28);
+        }
+
+        .arena-header-inner {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .brand-wrap {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .brand-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 16px;
+            background: linear-gradient(135deg, var(--brand), var(--cyan));
+            display: grid;
+            place-items: center;
+            font-size: 1.2rem;
+            box-shadow: 0 10px 25px rgba(99,102,241,0.35);
         }
 
         h1 {
-            font-size: 1.5rem;
-            color: #2d67b7;
-            margin-bottom: 5px;
+            font-size: clamp(1.2rem, 2vw, 1.8rem);
+            color: #fff;
+            letter-spacing: -0.05em;
+            margin-bottom: 4px;
+        }
+
+        .header-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.72rem;
+            font-weight: 700;
+            padding: 6px 10px;
+            border-radius: 999px;
+            background: rgba(99, 102, 241, 0.15);
+            color: #c7d2fe;
+            border: 1px solid rgba(99, 102, 241, 0.4);
+        }
+
+        .header-subtitle {
+            font-size: 0.76rem;
+            color: #cbd5e1;
+            opacity: 0.9;
         }
 
         .status-board {
             display: flex;
-            gap: 20px;
-            background: #ffffff;
-            padding: 10px 20px;
-            border-radius: 12px;
-            margin-bottom: 15px;
-            font-weight: bold;
-            color: #42536b;
-            box-shadow: 0 5px 16px rgba(42, 74, 115, .08);
+            gap: 12px;
+            flex-wrap: wrap;
+            justify-content: center;
+            padding: 10px 14px;
+            border-radius: 16px;
+            background: rgba(15, 23, 42, 0.72);
+            border: 1px solid rgba(148, 163, 184, 0.14);
+            font-size: 0.8rem;
+            font-weight: 700;
+            color: #e2e8f0;
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
+        }
+
+        .score-pill {
+            padding: 8px 12px;
+            border-radius: 999px;
+            border: 1px solid rgba(148, 163, 184, 0.16);
+            background: rgba(15, 23, 42, 0.7);
+        }
+
+        .score-pill strong {
+            color: #fff;
         }
 
         .game-container {
             width: 100%;
-            max-width: 800px;
             display: flex;
             flex-direction: column;
-            gap: 15px;
+            gap: 18px;
         }
 
         .player-zone {
-            background: rgba(255, 255, 255, .94);
-            border: 1px solid #e1e9f2;
-            border-radius: 16px;
-            padding: 15px;
+            background: rgba(15, 23, 42, 0.72);
+            border: 1px solid rgba(148, 163, 184, 0.16);
+            border-radius: 20px;
+            padding: 18px;
             position: relative;
-            box-shadow: 0 8px 24px rgba(42, 74, 115, .07);
+            box-shadow: 0 14px 30px rgba(15, 23, 42, 0.26);
         }
 
         .player-zone.active {
-            border-color: #7ba9e8;
-            box-shadow: 0 0 0 3px rgba(57, 120, 212, .10), 0 8px 24px rgba(42, 74, 115, .08);
+            border-color: rgba(99, 102, 241, 0.7);
+            box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.25), 0 20px 32px rgba(79, 70, 229, 0.12);
         }
 
         .player-info {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 10px;
+            margin-bottom: 12px;
+            gap: 8px;
+        }
+
+        .player-info h3 {
+            font-size: 1rem;
+            font-weight: 800;
+            color: #e2e8f0;
+        }
+
+        .player-status {
+            font-size: 0.72rem;
+            font-weight: 700;
+            padding: 6px 10px;
+            border-radius: 999px;
+            background: rgba(99, 102, 241, 0.12);
+            border: 1px solid rgba(99, 102, 241, 0.3);
+            color: #bfdbfe;
         }
 
         .hand-container {
             display: flex;
             gap: 8px;
             flex-wrap: wrap;
-            min-height: 90px;
+            min-height: 104px;
             margin-bottom: 15px;
-            padding: 8px;
-            background: #f1f5fa;
-            border-radius: 10px;
+            padding: 12px;
+            background: rgba(15, 23, 42, 0.86);
+            border-radius: 14px;
+            border: 1px solid rgba(148, 163, 184, 0.1);
         }
 
         .slots-container {
             display: flex;
             justify-content: center;
             align-items: center;
-            gap: 8px;
-            padding: 10px;
-            background: #f5f8fc;
-            border-radius: 12px;
+            gap: 10px;
+            flex-wrap: wrap;
+            padding: 12px;
+            background: rgba(15, 23, 42, 0.7);
+            border-radius: 14px;
+            border: 1px solid rgba(148, 163, 184, 0.12);
         }
 
         .slot {
-            width: 65px;
-            height: 90px;
-            border: 2px dashed #c5d1df;
-            border-radius: 8px;
+            width: 76px;
+            height: 104px;
+            border: 2px dashed rgba(148, 163, 184, 0.35);
+            border-radius: 14px;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
             position: relative;
-            background: #ffffff;
+            background: rgba(15, 23, 42, 0.9);
+            transition: all 0.2s ease;
         }
 
         .slot.operator-slot {
-            width: 50px;
-            height: 50px;
+            width: 56px;
+            height: 56px;
             border-radius: 50%;
         }
 
         .slot.selected {
-            border-color: var(--accent-color);
-            background: rgba(245, 158, 11, 0.1);
+            border-color: rgba(245, 158, 11, 0.8);
+            background: rgba(245, 158, 11, 0.12);
         }
 
         .card {
-            width: 60px;
-            height: 85px;
-            background: var(--card-bg);
-            border-radius: 6px;
+            width: 62px;
+            height: 88px;
+            background: linear-gradient(180deg, #ffffff, #e2e8f0);
+            border-radius: 10px;
             display: flex;
             flex-direction: column;
             justify-content: space-between;
-            padding: 5px;
-            color: #1e293b;
-            font-weight: bold;
+            padding: 5px 6px;
+            color: #0f172a;
+            font-weight: 800;
             cursor: pointer;
-            box-shadow: 0 3px 8px rgba(35, 50, 71, .16);
-            transition: transform 0.15s;
+            box-shadow: 0 10px 18px rgba(15, 23, 42, 0.2), inset 0 0 0 1px rgba(255,255,255,0.8);
+            transition: transform 0.15s, box-shadow 0.15s;
+            border: 1px solid rgba(15, 23, 42, 0.08);
         }
 
         .card:hover {
             transform: translateY(-3px);
+            box-shadow: 0 14px 22px rgba(99, 102, 241, 0.18);
         }
 
         .card.red {
-            color: var(--danger-color);
+            color: #dc2626;
         }
 
         .card.op-card {
-            background: #38bdf8;
-            color: #0f172a;
+            background: linear-gradient(135deg, rgba(6,182,212,0.95), rgba(59,130,246,0.9));
+            color: white;
             justify-content: center;
             align-items: center;
             font-size: 1.2rem;
-            height: 50px;
-            width: 50px;
+            height: 52px;
+            width: 52px;
             border-radius: 50%;
+            padding: 0;
         }
 
         .card.unary-card {
-            background: #a855f7;
-            color: white;
+            background: linear-gradient(135deg, rgba(168,85,247,0.95), rgba(236,72,153,0.9));
         }
 
         .attached-unary {
             position: absolute;
             top: -8px;
             right: -8px;
-            background: #a855f7;
+            background: rgba(168, 85, 247, 0.95);
             color: white;
-            font-size: 0.75rem;
+            font-size: 0.68rem;
             padding: 2px 6px;
-            border-radius: 10px;
-            border: 1px solid white;
+            border-radius: 999px;
+            border: 2px solid rgba(15, 23, 42, 0.7);
+            font-weight: 800;
         }
 
         button {
-            padding: 10px 20px;
+            padding: 10px 18px;
             border: none;
-            border-radius: 8px;
-            font-weight: bold;
+            border-radius: 12px;
+            font-weight: 800;
             cursor: pointer;
-            background: var(--primary-color);
+            background: linear-gradient(135deg, var(--brand), var(--brand-strong));
             color: white;
-            transition: opacity 0.2s;
+            transition: transform 0.2s ease, opacity 0.2s ease;
+            box-shadow: 0 12px 20px rgba(79, 70, 229, 0.2);
+        }
+
+        button:hover:not(:disabled) {
+            transform: translateY(-1px);
         }
 
         button:disabled {
@@ -199,21 +309,30 @@
 
         .calc-preview {
             text-align: center;
-            margin-top: 8px;
-            font-size: 1.1rem;
-            color: #2d67b7;
-            min-height: 25px;
+            margin-top: 10px;
+            font-size: 1.02rem;
+            color: #dbeafe;
+            min-height: 26px;
+            font-weight: 700;
         }
 
-        .deal-status { text-align: center; color: #64748b; }
+        .deal-status {
+            text-align: center;
+            color: #cbd5e1;
+            margin-bottom: 12px;
+            font-size: 0.8rem;
+            line-height: 1.5;
+        }
 
         .deck-picker {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(48px, 1fr));
             gap: 7px;
-            padding: 10px;
-            background: #f1f5fa;
-            border-radius: 10px;
+            padding: 12px;
+            background: rgba(15, 23, 42, 0.78);
+            border: 1px solid rgba(148, 163, 184, 0.12);
+            border-radius: 14px;
+            margin-bottom: 14px;
         }
 
         .deck-card-back {
@@ -221,26 +340,26 @@
             overflow: hidden;
             min-height: 68px;
             padding: 4px;
-            border: 3px solid #f8fafc;
-            outline: 1px solid #cbd5e1;
-            border-radius: 7px;
+            border: 3px solid rgba(255,255,255,0.2);
+            outline: 1px solid rgba(148,163,184,0.3);
+            border-radius: 10px;
             background-color: #172554;
             background-image:
-                repeating-linear-gradient(45deg, transparent 0 4px, rgba(255,255,255,.82) 4px 5px, transparent 5px 9px),
+                repeating-linear-gradient(45deg, transparent 0 4px, rgba(255,255,255,.78) 4px 5px, transparent 5px 9px),
                 repeating-linear-gradient(-45deg, transparent 0 4px, rgba(248,113,113,.9) 4px 5px, transparent 5px 9px),
                 linear-gradient(135deg, #1e3a8a, #172554 48%, #1e40af);
             color: #fff;
             font-weight: bold;
             cursor: pointer;
-            box-shadow: 0 3px 5px rgba(0,0,0,.3);
+            box-shadow: 0 10px 18px rgba(15, 23, 42, 0.2);
         }
 
         .deck-card-back::before {
             content: '';
             position: absolute;
             inset: 8px 5px;
-            border: 1px solid #f8fafc;
-            border-radius: 3px;
+            border: 1px solid rgba(255,255,255,0.8);
+            border-radius: 6px;
             box-shadow: inset 0 0 0 2px rgba(248,113,113,.85);
             pointer-events: none;
         }
@@ -255,12 +374,12 @@
             display: grid;
             place-items: center;
             transform: translate(-50%, -50%) rotate(45deg);
-            border: 2px double #f8fafc;
+            border: 2px double rgba(255,255,255,0.9);
             border-radius: 50%;
-            background: #991b1b;
+            background: rgba(153, 27, 27, 0.9);
             color: #fff;
             font-size: 15px;
-            text-shadow: 0 0 3px #fca5a5;
+            text-shadow: 0 0 3px rgba(252,165,165,0.75);
             pointer-events: none;
         }
 
@@ -269,126 +388,152 @@
         .result-overlay {
             position: fixed;
             inset: 0;
-            z-index: 10;
+            z-index: 30;
             display: none;
             align-items: center;
             justify-content: center;
             padding: 20px;
-            background: rgba(28, 43, 62, .48);
-            backdrop-filter: blur(5px);
+            background: rgba(2, 6, 23, 0.72);
+            backdrop-filter: blur(8px);
         }
 
         .result-overlay.visible { display: flex; }
 
         .result-dialog {
-            width: min(100%, 420px);
+            width: min(100%, 440px);
             padding: 26px;
-            border: 2px solid #f0c66e;
-            border-radius: 16px;
-            background: #ffffff;
+            border: 1px solid rgba(251, 191, 36, 0.48);
+            border-radius: 22px;
+            background: rgba(15, 23, 42, 0.9);
             text-align: center;
-            box-shadow: 0 18px 50px rgba(28, 43, 62, .24);
+            box-shadow: 0 22px 52px rgba(15, 23, 42, 0.42);
         }
 
-        .result-dialog h2 { margin-bottom: 12px; color: #ad7412; }
-        .result-dialog p { margin-bottom: 20px; line-height: 1.7; white-space: pre-line; }
+        .result-dialog h2 {
+            margin-bottom: 12px;
+            color: #fbbf24;
+            font-size: 1.3rem;
+        }
 
-        @media (max-width: 480px) and (orientation: portrait) {
+        .result-dialog p {
+            margin-bottom: 20px;
+            line-height: 1.7;
+            white-space: pre-line;
+            color: #e2e8f0;
+        }
+
+        @media (max-width: 640px) {
             body {
-                padding: 10px 10px calc(14px + env(safe-area-inset-bottom));
+                padding: 12px;
             }
 
-            header { width: 100%; margin-bottom: 10px; }
-            h1 { font-size: 1.25rem; margin-bottom: 9px; }
+            .arena-header {
+                padding: 14px 16px;
+            }
 
             .status-board {
                 width: 100%;
-                justify-content: space-between;
+                justify-content: center;
+            }
+
+            .player-zone {
+                padding: 14px;
+            }
+
+            .player-info {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .card {
+                width: 54px;
+                height: 78px;
+                padding: 4px;
+                font-size: 0.9rem;
+            }
+
+            .slot {
+                width: 62px;
+                height: 90px;
+            }
+
+            .slot.operator-slot, .card.op-card {
+                width: 46px;
+                height: 46px;
+            }
+
+            .deck-picker {
+                grid-template-columns: repeat(auto-fill, minmax(40px, 1fr));
                 gap: 6px;
-                padding: 9px 10px;
-                margin-bottom: 0;
-                font-size: .8rem;
+                padding: 8px;
             }
-
-            .game-container { gap: 10px; }
-            .player-zone { padding: 11px 9px; border-radius: 14px; }
-            .player-info { margin-bottom: 8px; font-size: .92rem; }
-            .hand-container { gap: 6px; min-height: 78px; margin-bottom: 10px; padding: 6px; }
-            .card { width: 52px; height: 74px; padding: 4px; font-size: .9rem; }
-
-            .slots-container {
-                gap: clamp(3px, 1.8vw, 7px);
-                padding: 8px 4px;
-            }
-
-            .slot { width: clamp(44px, 15vw, 58px); height: clamp(64px, 21vw, 80px); }
-            .slot.operator-slot, .card.op-card { width: clamp(36px, 11vw, 44px); height: clamp(36px, 11vw, 44px); }
-            .calc-preview { margin-top: 6px; font-size: 1rem; }
-            .deck-picker { grid-template-columns: repeat(auto-fill, minmax(40px, 1fr)); gap: 6px; padding: 8px; }
-            .deck-card-back { min-height: 58px; }
-            button { min-height: 44px; }
         }
     </style>
 </head>
 <body>
-
-    <header>
-        <h1>수식 마스터 1:1 트럼프 대결</h1>
-        <div id="peer-share" style="display:none;margin:8px auto;color:#3978d4;font-size:.9rem;font-weight:700">
-            <span id="peer-share-id"></span>
-            <button type="button" id="btn-copy-peer-id" onclick="copyBattlePeerId()" style="margin-left:8px;padding:6px 10px">복사</button>
-        </div>
-        <div class="status-board">
-            <div>라운드: <span id="round-num">1</span>/5</div>
-            <div>플레이어 1 점수: <span id="p1-score">0</span></div>
-            <div>AI 점수: <span id="p2-score">0</span></div>
-        </div>
-    </header>
-
-    <div class="game-container">
-        <!-- AI / Player 2 영역 -->
-        <div class="player-zone" id="p2-zone">
-            <div class="player-info">
-                <h3>AI (상대방)</h3>
-                <span id="p2-status">대기 중</span>
+    <div class="page-shell">
+        <header class="arena-header">
+            <div class="arena-header-inner">
+                <div class="brand-wrap">
+                    <div class="brand-icon">
+                        <i class="fa-solid fa-gamepad"></i>
+                    </div>
+                    <div>
+                        <h1>DUEL ARENA</h1>
+                        <div class="header-badge">MATH BATTLE</div>
+                    </div>
+                </div>
+                <div class="status-board">
+                    <div class="score-pill">라운드: <strong><span id="round-num">1</span>/5</strong></div>
+                    <div class="score-pill">P1: <strong><span id="p1-score">0</span></strong></div>
+                    <div class="score-pill">P2: <strong><span id="p2-score">0</span></strong></div>
+                </div>
             </div>
-            <div class="slots-container" id="p2-slots">
-                <div class="slot num-slot"></div>
-                <div class="slot operator-slot"></div>
-                <div class="slot num-slot"></div>
-                <div class="slot operator-slot"></div>
-                <div class="slot num-slot"></div>
+            <div class="header-subtitle" style="margin-top:10px;">실시간 수식 카드 대전</div>
+        </header>
+
+        <div class="game-container">
+            <div class="player-zone" id="p2-zone">
+                <div class="player-info">
+                    <h3>AI (상대방)</h3>
+                    <span class="player-status" id="p2-status">대기 중</span>
+                </div>
+                <div class="slots-container" id="p2-slots">
+                    <div class="slot num-slot"></div>
+                    <div class="slot operator-slot"></div>
+                    <div class="slot num-slot"></div>
+                    <div class="slot operator-slot"></div>
+                    <div class="slot num-slot"></div>
+                </div>
+                <div class="calc-preview" id="p2-preview">결과: -</div>
             </div>
-            <div class="calc-preview" id="p2-preview">결과: -</div>
+
+            <div class="player-zone active" id="p1-zone">
+                <div class="player-info">
+                    <h3>플레이어 1 (나)</h3>
+                    <span class="player-status" id="p1-status">카드배치 중</span>
+                </div>
+                <div class="deal-status" id="deal-status">숫자 카드 3장을 확인하고 보너스 카드를 뽑아주세요.</div>
+                <div class="hand-container" id="p1-hand"></div>
+                <div class="deck-picker" id="deck-picker"></div>
+                <div class="slots-container" id="p1-slots">
+                    <div class="slot num-slot" data-index="0"></div>
+                    <div class="slot operator-slot" data-index="1"></div>
+                    <div class="slot num-slot" data-index="2"></div>
+                    <div class="slot operator-slot" data-index="3"></div>
+                    <div class="slot num-slot" data-index="4"></div>
+                </div>
+                <div class="calc-preview" id="p1-preview">수식을 완결해주세요</div>
+            </div>
         </div>
 
-        <!-- Player 1 영역 -->
-        <div class="player-zone active" id="p1-zone">
-            <div class="player-info">
-                <h3>플레이어 1 (나)</h3>
-                <span id="p1-status">카드배치 중</span>
-            </div>
-            <div class="deal-status" id="deal-status">숫자 카드 3장을 확인하고 보너스 카드를 뽑아주세요.</div>
-            <div class="hand-container" id="p1-hand"></div>
-            <div class="deck-picker" id="deck-picker"></div>
-            <div class="slots-container" id="p1-slots">
-                <div class="slot num-slot" data-index="0"></div>
-                <div class="slot operator-slot" data-index="1"></div>
-                <div class="slot num-slot" data-index="2"></div>
-                <div class="slot operator-slot" data-index="3"></div>
-                <div class="slot num-slot" data-index="4"></div>
-            </div>
-            <div class="calc-preview" id="p1-preview">수식을 완결해주세요</div>
+        <div class="result-overlay" id="result-overlay" aria-hidden="true">
+            <section class="result-dialog" role="dialog" aria-modal="true" aria-labelledby="result-title">
+                <h2 id="result-title"></h2>
+                <p id="result-detail"></p>
+                <button id="result-action" onclick="confirmResult()">결과 확인</button>
+            </section>
         </div>
-
-    </div>
-
-    <div class="result-overlay" id="result-overlay" aria-hidden="true">
-        <section class="result-dialog" role="dialog" aria-modal="true" aria-labelledby="result-title">
-            <h2 id="result-title"></h2>
-            <p id="result-detail"></p>
-            <button id="result-action" onclick="confirmResult()">결과 확인</button>
-        </section>
     </div>
 
     <script src="https://unpkg.com/peerjs@1.5.5/dist/peerjs.min.js"></script>
