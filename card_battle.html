@@ -551,6 +551,7 @@
         let battleRoom = null;
         let battleSyncReady = false;
         let lastShownRound = 0;
+        let lastStartedRound = 0;
         let advanceInProgress = false;
 
         const emptyBattleState = () => ({ round: 1, scores: { P1: 0, P2: 0 }, submissions: {}, ready: {}, resolvedRound: 0 });
@@ -559,9 +560,6 @@
             if (!shared || !battleSyncReady) return;
             currentRound = shared.round || 1;
             document.getElementById('round-num').textContent = currentRound;
-            p1Score = shared.scores?.P1 || 0;
-            p2Score = shared.scores?.P2 || 0;
-            updateScoreBoard();
 
             const ownSubmission = shared.submissions?.[battleContext.role];
             const otherRole = battleContext.role === 'P1' ? 'P2' : 'P1';
@@ -609,7 +607,8 @@
                 document.getElementById('result-action').textContent = '상대 확인 대기 중';
             }
 
-            if (!ownSubmission && currentRound !== Number(document.getElementById('round-num').textContent)) {
+            if (!ownSubmission && lastStartedRound !== currentRound) {
+                lastStartedRound = currentRound;
                 lastShownRound = 0;
                 startRound();
             }
@@ -794,6 +793,7 @@
                 alert(`게임 종료! 최종 결과 - 플레이어: ${p1Score} vs AI: ${p2Score}`);
                 return;
             }
+            lastStartedRound = currentRound;
             
             p1Slots = [null, null, null, null, null];
             p2Slots = [null, null, null, null, null];
@@ -822,13 +822,14 @@
 
         function renderDeckPicker() {
             const picker = document.getElementById('deck-picker');
-            picker.innerHTML = '';
+            picker.replaceChildren();
             if (pickPhase === 'arrange') {
                 picker.style.display = 'none';
                 return;
             }
             picker.style.display = 'grid';
             const deck = pickPhase === 'number' ? numDeck : opDeck;
+            const fragment = document.createDocumentFragment();
             deck.forEach(card => {
                 const back = document.createElement('button');
                 back.type = 'button';
@@ -836,8 +837,9 @@
                 back.textContent = '';
                 back.setAttribute('aria-label', '뒤집힌 카드 선택');
                 back.onclick = () => selectDeckCard(card);
-                picker.appendChild(back);
+                fragment.appendChild(back);
             });
+            picker.appendChild(fragment);
         }
 
         function selectDeckCard(card) {
