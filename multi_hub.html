@@ -539,7 +539,11 @@
             const configuredIceServers = Array.isArray(window.ARENA_ICE_SERVERS) ? window.ARENA_ICE_SERVERS : [];
             const iceServers = configuredIceServers.length
                 ? configuredIceServers
-                : [{ urls: 'stun:stun.l.google.com:19302' }];
+                : [
+                    { urls: 'stun:stun.l.google.com:19302' },
+                    { urls: 'stun:stun.cloudflare.com:3478' },
+                    { urls: 'stun:stun.relay.metered.ca:80' }
+                ];
             return new Peer(undefined, { config: { iceServers } });
         }
 
@@ -777,6 +781,14 @@
                     }
                 }, 90000);
                 state.peerConnectTimeout = timeout;
+                connection.peerConnection?.addEventListener('iceconnectionstatechange', () => {
+                    if (connection.peerConnection.iceConnectionState !== 'failed' || state.currentRoomId) return;
+                    clearTimeout(timeout);
+                    if (state.peerConnection === connection) state.peerConnection = null;
+                    setPeerConnectionStatus('WebRTC 연결 실패. TURN 서버를 설정하거나 다른 네트워크에서 다시 시도하세요.', true);
+                    button.disabled = false;
+                    connection.close();
+                });
                 connection.on('open', () => {
                     logPeerConnection('접속 시도 측에서 데이터 채널 open 수신');
                     setPeerConnectionStatus('데이터 채널 연결됨. 방장의 참가 확인을 기다리는 중…');
